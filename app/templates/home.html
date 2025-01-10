@@ -1,21 +1,15 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inicio</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 text-gray-800">
-    <header class="bg-blue-600 text-white p-4">
-        <h1 class="text-2xl font-bold">¡Bienvenido a mi aplicación Flask!</h1>
-    </header>
-    <main class="p-4">
-        <p class="text-lg">Este es el contenido dinámico de la página principal.</p>
-        <a href="/about" class="text-blue-500 underline">Ir a la página de Acerca de</a>
-    </main>
-    <footer class="bg-gray-800 text-white text-center p-2">
-        <p>© 2025 - VozIA</p>
-    </footer>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Inicio - Nexos Ecuador{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center h-screen">
+    <div class="text-center">
+        <h1 class="text-4xl font-extrabold text-blue-600 mb-4">Bienvenido a Nexos Ecuador</h1>
+        <p class="text-lg text-gray-700 mb-6">La solución para gestionar citas y ventas de manera eficiente.</p>
+        <a href="/about" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+            Acerca de Nosotros
+        </a>
+    </div>
+</div>
+{% endblock %}
