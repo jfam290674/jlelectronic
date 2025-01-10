@@ -1,9 +1,10 @@
+from flask import render_template
 from app import app
 
 # Ruta principal
 @app.route('/')
 def home():
-    return "¡Hola desde Visual Studio Code! Este cambio se refleja en GitHub y cPanel."
+    return render_template('home.html')
 
 # Nueva ruta: About
 @app.route('/about')
