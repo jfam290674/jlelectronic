@@ -2,4 +2,4 @@ from app import app
 
 @app.route('/')
 def home():
-    return "¡Hola, mundo! Esta es una aplicación Flask modular."
+    return "¡Hola desde Visual Studio Code! Este cambio se refleja en GitHub y cPanel."
