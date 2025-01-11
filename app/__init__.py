@@ -1,19 +1,31 @@
-import pymysql
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import os
+import sys
 
-# Usar PyMySQL como backend para SQLAlchemy
-pymysql.install_as_MySQLdb()
+# Asegurarse de que la codificaci√≥n predeterminada sea UTF-8
+if hasattr(sys, 'setdefaultencoding'):
+    sys.setdefaultencoding('utf-8')
 
-# Crear una instancia de Flask
-app = Flask(__name__)
 
-# Configuraci®Æn de la base de datos MySQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://nexosdel_citas:4Pz{Q$U%YH2}@localhost/nexosdel_citas'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializar SQLAlchemy
-db = SQLAlchemy(app)
+db = SQLAlchemy()
 
-# Importar las rutas
-from app import routes
+def create_app():
+    app = Flask(__name__)
+    
+        # Configuraci√≥n de la base de datos
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://nexosdel_citas:4Pz{Q$U%YH2}@localhost/nexosdel_citas'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    app.secret_key = 'afc913bae69160ff2f413725d213e3dc8b6b1a3ee39e757b4c240c33304efe54'
+
+
+    # Inicializar la base de datos con la app
+    db.init_app(app)
+
+    # Registrar las rutas despu√©s de inicializar la app
+    from app.routes import routes
+    app.register_blueprint(routes)
+
+    return app

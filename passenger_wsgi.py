@@ -1,6 +1,8 @@
-import os
 import sys
+from app import create_app
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Ruta a tu proyecto
+sys.path.insert(0, '/home/nexosdel/jlelectronic.nexosdelecuador.com')
 
-from app import app as application
+# Crear la aplicaci¨®n
+application = create_app()
