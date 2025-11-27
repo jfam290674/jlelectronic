@@ -1,0 +1,12 @@
+# Dev & test dependencies for JL APP (Bodega module)
+pytest==8.3.3
+pytest-django==4.9.0
+pytest-cov==5.0.0
+
+# Opcionales útiles para tests
+model-bakery==1.18.0
+freezegun==1.5.1
+
+# DRF & filters (por si no estuvieran en tu requirements principal)
+djangorestframework>=3.15.0
+django-filter>=24.3

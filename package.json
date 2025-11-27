@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "@types/html2canvas": "^1.0.0",
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "zustand": "^5.0.8"
+  }
+}

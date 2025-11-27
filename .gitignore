@@ -1,7 +1,41 @@
+# Python / Django
 __pycache__/
-*.pyc
-.env
-/virtualenv/
-/tmp/
-logs/
+*.py[cod]
+*$py.class
+*.sqlite3
 *.log
+.env
+.venv
+env/
+venv/
+ENV/
+env_bk/
+db.sqlite3
+db.sqlite3-journal
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+*.log
+.npm
+.yarn-integrity
+
+# Laragon / Local
+laragon/
+www/
+storage/
+*.tmp
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#0A3D91" />
+    <meta name="color-scheme" content="light only" />
+    <link rel="manifest" href="/static/frontend/manifest.webmanifest" />
+
+    <!-- Android/Chrome PWA -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="JL Electronic" />
+    <link rel="apple-touch-icon" href="/static/frontend/icons/icon-192x192.png" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>JL Electronic</title>
+
+    <style>
+      :root { --brand:#0A3D91; --accent:#E44C2A; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: #fff;
+        color: #0b1220;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Barra iOS “Agregar a pantalla de inicio” */
+      #ios-a2hs {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 9999;
+        display: flex; align-items: center; gap: .75rem;
+        padding: .75rem clamp(12px, 4vw, 20px);
+        padding-bottom: calc(.75rem + env(safe-area-inset-bottom));
+        background: rgba(11,18,32,.92); color: #fff;
+        backdrop-filter: blur(8px);
+        border-top: 1px solid rgba(255,255,255,.12);
+        box-shadow: 0 -6px 16px rgba(0,0,0,.2);
+      }
+      #ios-a2hs[hidden] { display: none !important; }
+      #ios-a2hs .appicon {
+        width: 28px; height: 28px; border-radius: 6px;
+        background: url(/static/frontend/icons/icon-192x192.png) center/cover no-repeat;
+        flex: 0 0 auto;
+      }
+      #ios-a2hs .txt { font-size: 13px; line-height: 1.25; opacity: .95; }
+      #ios-a2hs .txt b { color: #fff; }
+      #ios-a2hs .close {
+        margin-left: auto;
+        background: transparent;
+        border: 1px solid rgba(255,255,255,.18);
+        color: #fff; border-radius: 10px;
+        padding: .35rem .6rem; font-size: 12px;
+      }
+      .safe-top { padding-top: env(safe-area-inset-top); }
+    </style>
+
+    <!-- Bundles de producción (AJUSTA SI EL BUILD CAMBIA LOS NOMBRES) -->
+    <script type="module" crossorigin src="/static/frontend/assets/app-DJMFkjty.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/frontend/assets/app-Csj_OikA.css" />
+  </head>
+
+  <body class="safe-top">
+    <div id="root"></div>
+
+    <!-- Barra de ayuda iOS (solo Safari iPhone/iPad y cuando no está “standalone”) -->
+    <div id="ios-a2hs" hidden aria-live="polite" role="status">
+      <div class="appicon" aria-hidden="true"></div>
+      <div class="txt">
+        Para <b>instalar</b> esta app: toca
+        <span aria-label="Botón Compartir">Compartir</span>
+        <span aria-hidden="true">⬆️</span> y elige
+        <b>“Agregar a pantalla de inicio”</b>.
+      </div>
+      <button class="close" type="button" aria-label="Ocultar">Entendido</button>
+    </div>
+
+    <!-- Lógica mínima: mostrar barra iOS cuando aplica -->
+    <script>
+      (function () {
+        var ua = navigator.userAgent || "";
+        var isIOS = /iphone|ipad|ipod/i.test(ua);
+        var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+                           || (window.navigator && window.navigator.standalone === true);
+        var isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+        var bar = document.getElementById("ios-a2hs");
+        var closeBtn = bar ? bar.querySelector(".close") : null;
+
+        // Solo mostrar en Safari iOS cuando NO está instalada
+        if (bar && isIOS && isSafari && !isStandalone) {
+          var k = "iosA2HS.dismissedAt";
+          var last = parseInt(localStorage.getItem(k) || "0", 10);
+          var now = Date.now();
+          if (!last || (now - last) > 24 * 60 * 60 * 1000) bar.hidden = false;
+          if (closeBtn) {
+            closeBtn.addEventListener("click", function () {
+              bar.hidden = true;
+              localStorage.setItem(k, String(Date.now()));
+            });
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>

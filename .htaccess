@@ -1,0 +1,75 @@
+# =============================
+# .htaccess — Django (Passenger) + WhiteNoise
+# Dominio: jlelectronic-app.nexosdelecuador.com
+# Objetivo: servir estáticos íntegros, sin filtros que vacíen el cuerpo,
+#           y dejar a Passenger sólo lo dinámico.
+# =============================
+
+# --- Passenger ON (la app Django vive aquí) ---
+PassengerEnabled on
+
+# --- Opciones seguras/minimalistas ---
+Options -MultiViews -Indexes
+DirectoryIndex index.html
+
+# --- ENTREGAR ESTÁTICOS DIRECTO (sin PHP/Passenger/ESI) ---
+<FilesMatch "\.(?:html|js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|json|webmanifest|txt|map|woff2?|ttf|eot|otf)$">
+  SetHandler none
+  Require all granted
+</FilesMatch>
+
+# --- LiteSpeed: desactiva ESI/Cache (evita manipulación de cuerpo/respuestas parciales) ---
+<IfModule LiteSpeed>
+  ESIEnable off
+  CacheDisable public
+  CacheLookup public off
+</IfModule>
+
+# --- ModSecurity: apágalo en este vhost si existe (algunos rulesets rompen cuerpos) ---
+<IfModule mod_security.c>
+  SecFilterEngine Off
+  SecFilterScanPOST Off
+</IfModule>
+<IfModule mod_security2.c>
+  SecRuleEngine Off
+</IfModule>
+
+# --- Compresión: desactiva en binarios para evitar bugs de filtros que cortan la salida ---
+<IfModule mod_deflate.c>
+  SetEnvIfNoCase Request_URI "\.(?:jpg|jpeg|png|gif|webp|ico|svg|woff2?|ttf|eot|otf|map)$" no-gzip=1
+</IfModule>
+<IfModule mod_brotli.c>
+  SetEnvIfNoCase Request_URI "\.(?:jpg|jpeg|png|gif|webp|ico|svg|woff2?|ttf|eot|otf|map)$" no-brotli=1
+</IfModule>
+
+# --- MIME explícitos (evita 'octet-stream' y nosniff falsos positivos) ---
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/json             .json
+  AddType application/javascript       .js
+  AddType text/javascript              .mjs
+  AddType image/svg+xml                .svg
+  AddType font/woff2                   .woff2
+</IfModule>
+
+# --- Cabeceras suaves para estáticos (opcional; Django ya añade varias) ---
+<IfModule mod_headers.c>
+  # Asegura que navegadores no rompan por MIMEs
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# --- Reescrituras mínimas: deja pasar archivos reales; lo demás lo maneja Passenger ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Si el recurso existe como archivo o directorio, sírvelo tal cual.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Pistas explícitas para rutas de estáticos/medios si se solicitan por URL directa
+  RewriteRule ^(static/|media/) - [L]
+
+  # Todo lo demás queda en manos de Passenger (no forzamos handler aquí para no romper WSGI)
+  RewriteRule . - [L]
+</IfModule>
