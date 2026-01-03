@@ -1,7 +1,39 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+env/
+venv/
+ENV/
+
+# Secrets & Environment Variables (SEGURIDAD CRÍTICA)
 .env
-/virtualenv/
-/tmp/
+.env.local
+*.p12
+*.pem
+*.key
+
+# Database (No subir bases de datos locales)
+*.sqlite3
+instance/
+
+# Node / React
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Logs & Error reports
 logs/
 *.log
+stderr.log
+stdout.log
+
+# VS Code config
+.vscode/
+
+# cPanel / Passenger specific
+tmp/
+public/.htaccess

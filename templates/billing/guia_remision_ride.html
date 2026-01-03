@@ -1,0 +1,524 @@
+{# billing\templates\billing\guia_remision_ride.html #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RIDE Guía de Remisión</title>
+    <style>
+        {% if dark_mode %}
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #f5f5f5;
+            background-color: #111111;
+        }
+        .card-border {
+            border: 1px solid #444444;
+        }
+        .header-title {
+            background-color: #222222;
+            color: #f5f5f5;
+        }
+        .table-header {
+            background-color: #333333;
+            color: #f5f5f5;
+        }
+        {% else %}
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #000000;
+            background-color: #ffffff;
+        }
+        .card-border {
+            border: 1px solid #000000;
+        }
+        .header-title {
+            background-color: #f0f0f0;
+            color: #000000;
+        }
+        .table-header {
+            background-color: #e0e0e0;
+            color: #000000;
+        }
+        {% endif %}
+
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .no-border {
+            border: none;
+        }
+
+        .mb-5 { margin-bottom: 5px; }
+        .mb-10 { margin-bottom: 10px; }
+        .mb-15 { margin-bottom: 15px; }
+        .mt-5 { margin-top: 5px; }
+        .mt-10 { margin-top: 10px; }
+
+        .p-3 { padding: 3px; }
+        .p-5 { padding: 5px; }
+        .p-8 { padding: 8px; }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        .small { font-size: 9px; }
+        .bold { font-weight: bold; }
+
+        th, td {
+            padding: 3px 4px;
+        }
+
+        th {
+            font-size: 10px;
+        }
+
+        .bordered th,
+        .bordered td {
+            border: 1px solid #000000;
+        }
+
+        .clave-acceso {
+            font-family: "Courier New", monospace;
+            font-size: 9px;
+            word-spacing: 2px;
+            letter-spacing: 1px;
+        }
+
+        .qr-box {
+            text-align: center;
+            padding-top: 4px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 3px;
+        }
+
+        .w-25 { width: 25%; }
+        .w-50 { width: 50%; }
+        .w-100 { width: 100%; }
+
+        .align-top {
+            vertical-align: top;
+        }
+
+        .wrap {
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    {# ===========================================================
+       ENCABEZADO: LOGO / DATOS EMPRESA / DATOS GUIA
+       =========================================================== #}
+    <table class="mb-10">
+        <tr>
+            {# Columna izquierda: Logo y branding #}
+            <td class="align-top w-50">
+                <table class="card-border" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="p-8">
+                            {% if branding.logo_url %}
+                                <div class="mb-10">
+                                    <img src="{{ branding.logo_url }}" alt="Logo" style="max-width: 180px; max-height: 80px;">
+                                </div>
+                            {% endif %}
+                            <div class="bold" style="font-size: 13px;">
+                                {{ branding.company_name|default:empresa.razon_social }}
+                            </div>
+                            {% if branding.line1 %}
+                                <div>{{ branding.line1 }}</div>
+                            {% endif %}
+                            {% if branding.line2 %}
+                                <div>{{ branding.line2 }}</div>
+                            {% else %}
+                                <div>RUC: {{ empresa.ruc }}</div>
+                            {% endif %}
+                            {% if branding.line3 %}
+                                <div>{{ branding.line3 }}</div>
+                            {% else %}
+                                <div>Matriz: {{ empresa.direccion_matriz }}</div>
+                            {% endif %}
+                            {% if branding.line4 %}
+                                <div>{{ branding.line4 }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+
+            {# Columna derecha: datos de la guía y clave de acceso #}
+            <td class="align-top w-50">
+                <table class="card-border" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="header-title text-center bold p-5">
+                            COMPROBANTE AUTORIZADO
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="p-5">
+                            <table class="no-border">
+                                <tr>
+                                    <td class="bold">RUC:</td>
+                                    <td>{{ empresa.ruc }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Tipo:</td>
+                                    <td>GUÍA DE REMISIÓN</td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">No.:</td>
+                                    <td>
+                                        {% if establecimiento and punto_emision %}
+                                            {{ establecimiento.codigo }}-{{ punto_emision.codigo }}-
+                                        {% endif %}
+                                        {{ guia.secuencial|default:"" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Fecha emisión:</td>
+                                    <td>
+                                        {{ guia.fecha_emision|date:"d/m/Y" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Ambiente:</td>
+                                    <td>
+                                        {{ empresa.get_ambiente_efectivo_display|default:empresa.ambiente_efectivo }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Emisión:</td>
+                                    <td>
+                                        {{ empresa.get_tipo_emision_display|default:"NORMAL" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">No. Autorización:</td>
+                                    <td class="wrap">
+                                        {{ guia.numero_autorizacion|default:"" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Fecha Autorización:</td>
+                                    <td>
+                                        {% if guia.fecha_autorizacion %}
+                                            {{ guia.fecha_autorizacion|date:"d/m/Y H:i" }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="p-5">
+                            <div class="bold small mb-3">CLAVE DE ACCESO</div>
+                            <div class="clave-acceso wrap">
+                                {{ guia.clave_acceso }}
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    {# Fila: QR + información del establecimiento #}
+    <table class="mb-15">
+        <tr>
+            <td class="w-50 align-top">
+                {% if qr_data_uri %}
+                    <div class="qr-box">
+                        <img src="{{ qr_data_uri }}" alt="QR" style="width: 120px; height: 120px;">
+                        <div class="small">Consulta este comprobante en el portal SRI.</div>
+                    </div>
+                {% endif %}
+            </td>
+            <td class="w-50 align-top">
+                <table class="card-border" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="p-5">
+                            <div class="section-title">Información del Establecimiento</div>
+                            <table class="no-border small">
+                                <tr>
+                                      <td class="bold">Dirección matriz:</td>
+                                      <td>{{ empresa.direccion_matriz }}</td>
+                                </tr>
+                                <tr>
+                                      <td class="bold">Dirección sucursal:</td>
+                                      <td>
+                                          {% if establecimiento and establecimiento.direccion %}
+                                              {{ establecimiento.direccion }}
+                                          {% else %}
+                                              {{ empresa.direccion_matriz }}
+                                          {% endif %}
+                                      </td>
+                                </tr>
+                                <tr>
+                                      <td class="bold">Contribuyente especial:</td>
+                                      <td>{{ empresa.contribuyente_especial|default:"" }}</td>
+                                </tr>
+                                <tr>
+                                      <td class="bold">Obligado a llevar contabilidad:</td>
+                                      <td>
+                                          {% firstof empresa.obligado_contabilidad empresa.obligado_llevar_contabilidad False as obligado_cont %}
+                                          {% if obligado_cont %}
+                                              SI
+                                          {% else %}
+                                              NO
+                                          {% endif %}
+                                      </td>
+                                </tr>
+                                <tr>
+                                      <td class="bold">Teléfono:</td>
+                                      <td>
+                                          {% firstof empresa.telefono_principal empresa.telefono "" %}
+                                      </td>
+                                </tr>
+                                <tr>
+                                      <td class="bold">Email:</td>
+                                      <td>
+                                          {# EVITA empresa.email (no existe y revienta el render) #}
+                                          {% firstof empresa.email_facturacion empresa.email_contacto "" %}
+                                      </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    {# ===========================================================
+       DATOS DE TRANSPORTE
+       =========================================================== #}
+    <table class="card-border mb-10">
+        <tr class="table-header">
+            <th colspan="4" class="text-left p-5">Datos de Transporte</th>
+        </tr>
+        <tr>
+            <td class="bold w-25">Punto de partida:</td>
+            <td class="w-25">
+                {% firstof guia.dir_partida guia.punto_partida empresa.direccion_matriz %}
+            </td>
+            <td class="bold w-25">Placa vehículo:</td>
+            <td class="w-25">
+                {% firstof guia.placa guia.placa_vehiculo "" %}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Fecha inicio transporte:</td>
+            <td>
+                {% if guia.fecha_inicio_transporte %}
+                    {{ guia.fecha_inicio_transporte|date:"d/m/Y" }}
+                {% endif %}
+            </td>
+            <td class="bold">Fecha fin transporte:</td>
+            <td>
+                {% if guia.fecha_fin_transporte %}
+                    {{ guia.fecha_fin_transporte|date:"d/m/Y" }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Identificación transportista:</td>
+            <td>
+                {{ guia.identificacion_transportista|default:"" }}
+            </td>
+            <td class="bold">Razón social transportista:</td>
+            <td>
+                {{ guia.razon_social_transportista|default:"" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Motivo del traslado:</td>
+            <td colspan="3">
+                {% firstof guia.motivo_traslado "" %}
+            </td>
+        </tr>
+    </table>
+
+    {# ===========================================================
+       DATOS DEL DESTINATARIO / DOCUMENTO DE SUSTENTO
+       (si hay múltiples destinatarios, se listan todos)
+       =========================================================== #}
+    <table class="card-border mb-10">
+        <tr class="table-header">
+            <th colspan="6" class="text-left p-5">Destinatarios y Documentos de Sustento</th>
+        </tr>
+        <tr>
+            <th class="small">Identificación</th>
+            <th class="small">Razón social / Nombres</th>
+            <th class="small">Dirección destino</th>
+            <th class="small">Motivo traslado</th>
+            <th class="small">Doc. sustento</th>
+            <th class="small">Fecha doc. sustento</th>
+        </tr>
+
+        {% if guia.destinatarios.all %}
+            {% for dest in guia.destinatarios.all %}
+                <tr>
+                    <td class="small">
+                        {% firstof dest.identificacion_destinatario dest.identificacion "" %}
+                    </td>
+                    <td class="small">
+                        {% firstof dest.razon_social_destinatario dest.razon_social "" %}
+                    </td>
+                    <td class="small">
+                        {% firstof dest.direccion_destino dest.direccion_destinatario "" %}
+                    </td>
+                    <td class="small">
+                        {% firstof dest.motivo_traslado guia.motivo_traslado "" %}
+                    </td>
+                    <td class="small">
+                        {{ dest.num_doc_sustento|default:"" }}
+                    </td>
+                    <td class="small">
+                        {% if dest.fecha_emision_doc_sustento %}
+                            {{ dest.fecha_emision_doc_sustento|date:"d/m/Y" }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td class="small">
+                    {{ guia.identificacion_destinatario|default:"" }}
+                </td>
+                <td class="small">
+                    {{ guia.razon_social_destinatario|default:"" }}
+                </td>
+                <td class="small">
+                    {% firstof guia.direccion_destino guia.direccion_destinatario "" %}
+                </td>
+                <td class="small">
+                    {{ guia.motivo_traslado|default:"" }}
+                </td>
+                <td class="small">
+                    {{ guia.num_doc_sustento|default:"" }}
+                </td>
+                <td class="small">
+                    {% if guia.fecha_emision_doc_sustento %}
+                        {{ guia.fecha_emision_doc_sustento|date:"d/m/Y" }}
+                    {% endif %}
+                </td>
+            </tr>
+        {% endif %}
+    </table>
+
+    {# ===========================================================
+       DETALLE DE BIENES TRANSPORTADOS
+       =========================================================== #}
+    <table class="bordered mb-10">
+        <tr class="table-header">
+            <th class="small text-left">Código</th>
+            <th class="small text-left">Descripción</th>
+            <th class="small text-right">Cantidad</th>
+            <th class="small text-left">Unidad</th>
+            <th class="small text-left">Código adicional</th>
+        </tr>
+
+        {% if guia.detalles.all %}
+            {% for det in guia.detalles.all %}
+                <tr>
+                    <td class="small">
+                        {% firstof det.codigo_principal det.codigo "" %}
+                    </td>
+                    <td class="small wrap">
+                        {{ det.descripcion|default:"" }}
+                    </td>
+                    <td class="small text-right">
+                        {{ det.cantidad|default:""|floatformat:2 }}
+                    </td>
+                    <td class="small">
+                        {{ det.unidad_medida|default:"" }}
+                    </td>
+                    <td class="small">
+                        {{ det.codigo_adicional|default:"" }}
+                    </td>
+                </tr>
+            {% endfor %}
+        {% elif guia.destinatarios.all %}
+            {% for dest in guia.destinatarios.all %}
+                {% for det in dest.detalles.all %}
+                    <tr>
+                        <td class="small">
+                            {% firstof det.codigo_principal det.codigo "" %}
+                        </td>
+                        <td class="small wrap">
+                            {{ det.descripcion|default:"" }}
+                        </td>
+                        <td class="small text-right">
+                            {{ det.cantidad|default:""|floatformat:2 }}
+                        </td>
+                        <td class="small">
+                            {{ det.unidad_medida|default:"" }}
+                        </td>
+                        <td class="small">
+                            {{ det.codigo_adicional|default:"" }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="5" class="text-center small">
+                    No existen detalles de bienes registrados.
+                </td>
+            </tr>
+        {% endif %}
+    </table>
+
+    {# ===========================================================
+       INFORMACIÓN ADICIONAL
+       =========================================================== #}
+    <table class="mb-10">
+        <tr>
+            <td class="w-100 align-top">
+                <table class="card-border w-100">
+                    <tr class="table-header">
+                        <th class="text-left p-5">Información adicional</th>
+                    </tr>
+                    <tr>
+                        <td class="p-5 small">
+                            <table class="no-border small w-100">
+                                <tr>
+                                    <td class="bold w-25">Placa vehículo:</td>
+                                    <td class="w-75">
+                                        {% firstof guia.placa guia.placa_vehiculo "" %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold align-top">Observaciones:</td>
+                                    <td class="wrap">
+                                        {% firstof guia.observaciones guia.info_adicional "" %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="small mt-10">
+        Impreso el {{ now|date:"d/m/Y H:i" }}.
+    </div>
+</div>
+</body>
+</html>

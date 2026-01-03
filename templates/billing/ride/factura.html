@@ -1,0 +1,681 @@
+{# templates/billing/ride/factura.html #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIDE Factura {{ invoice.secuencial_display }}</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+      font-size: 10px;
+      line-height: 1.4;
+      color: #000;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .ride-container {
+      background: #fff;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 15mm;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    /* ==================== ENCABEZADO ==================== */
+    .header {
+      display: table;
+      width: 100%;
+      border: 2px solid #000;
+      margin-bottom: 10px;
+    }
+
+    .header-left,
+    .header-right {
+      display: table-cell;
+      vertical-align: top;
+      padding: 10px;
+    }
+
+    .header-left {
+      width: 50%;
+      border-right: 1px solid #666;
+    }
+
+    .header-right {
+      width: 50%;
+      text-align: center;
+    }
+
+    .logo {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .logo img {
+      max-width: 160px;
+      max-height: 70px;
+    }
+
+    .company-info {
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .company-name {
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .ride-title {
+      background-color: #000;
+      color: #fff;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .invoice-number {
+      font-size: 13px;
+      font-weight: bold;
+      margin: 8px 0;
+    }
+
+    .auth-section {
+      margin: 8px 0;
+      font-size: 9px;
+      text-align: left;
+      padding: 0 10px;
+    }
+
+    .auth-label {
+      font-weight: bold;
+      display: block;
+      margin-top: 6px;
+    }
+
+    .auth-value {
+      word-break: break-all;
+      margin-top: 2px;
+    }
+
+    .barcode-container {
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .barcode-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .ambiente-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background-color: #e74c3c;
+      color: #fff;
+      font-size: 9px;
+      font-weight: bold;
+      border-radius: 3px;
+      margin: 5px 0;
+    }
+
+    .ambiente-badge.produccion {
+      background-color: #27ae60;
+    }
+
+    /* ==================== SECCIONES ==================== */
+    .section {
+      border: 1px solid #000;
+      margin-bottom: 8px;
+      page-break-inside: avoid;
+    }
+
+    .section-header {
+      background-color: #e0e0e0;
+      padding: 5px 8px;
+      font-weight: bold;
+      font-size: 10px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #000;
+    }
+
+    .section-content {
+      padding: 8px;
+    }
+
+    .info-row {
+      margin-bottom: 4px;
+      font-size: 9px;
+    }
+
+    .info-label {
+      font-weight: bold;
+      display: inline-block;
+      min-width: 120px;
+    }
+
+    .info-value {
+      display: inline;
+    }
+
+    /* ==================== TABLAS ==================== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+
+    table.details-table {
+      font-size: 8px;
+    }
+
+    th {
+      background-color: #d0d0d0;
+      color: #000;
+      font-weight: bold;
+      text-align: center;
+      padding: 6px 4px;
+      border: 1px solid #000;
+      font-size: 9px;
+    }
+
+    td {
+      border: 1px solid #666;
+      padding: 5px 4px;
+      vertical-align: top;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .text-left {
+      text-align: left;
+    }
+
+    /* Filas alternas */
+    tbody tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    /* ==================== TOTALES ==================== */
+    .totals-section {
+      display: table;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .totals-left {
+      display: table-cell;
+      width: 35%;
+      vertical-align: top;
+      padding-right: 10px;
+    }
+
+    .totals-right {
+      display: table-cell;
+      width: 65%;
+      vertical-align: top;
+    }
+
+    .qr-container {
+      text-align: center;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .qr-container img {
+      max-width: 120px;
+      max-height: 120px;
+    }
+
+    .qr-label {
+      font-size: 8px;
+      margin-top: 5px;
+      color: #666;
+    }
+
+    table.totals-table {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    table.totals-table th {
+      text-align: left;
+      background-color: #f5f5f5;
+      width: 65%;
+      padding: 5px 8px;
+    }
+
+    table.totals-table td {
+      text-align: right;
+      padding: 5px 8px;
+      font-weight: bold;
+    }
+
+    table.totals-table tr.total-final {
+      background-color: #e0e0e0;
+      font-size: 11px;
+    }
+
+    table.totals-table tr.total-final th,
+    table.totals-table tr.total-final td {
+      background-color: #e0e0e0;
+      border: 1px solid #000;
+      padding: 7px 8px;
+    }
+
+    /* ==================== PIE DE PÁGINA ==================== */
+    .clave-acceso-section {
+      margin-top: 10px;
+      border: 1px solid #000;
+      padding: 8px;
+    }
+
+    .clave-label {
+      font-weight: bold;
+      font-size: 9px;
+      margin-bottom: 4px;
+    }
+
+    .clave-value {
+      font-family: "Courier New", monospace;
+      font-size: 9px;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+
+    .footer-info {
+      text-align: center;
+      font-size: 8px;
+      color: #666;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    /* ==================== ESTADO ==================== */
+    .estado-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    .estado-badge.AUTORIZADO {
+      background-color: #27ae60;
+      color: #fff;
+    }
+
+    .estado-badge.PENDIENTE {
+      background-color: #f39c12;
+      color: #fff;
+    }
+
+    .estado-badge.NO_AUTORIZADO {
+      background-color: #e74c3c;
+      color: #fff;
+    }
+
+    /* ==================== PRINT ==================== */
+    @media print {
+      body {
+        background-color: #fff;
+        padding: 0;
+      }
+
+      .ride-container {
+        box-shadow: none;
+        max-width: 100%;
+      }
+    }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media screen and (max-width: 768px) {
+      .header-left,
+      .header-right {
+        display: block;
+        width: 100%;
+        border-right: none;
+      }
+
+      .header-right {
+        border-top: 1px solid #666;
+      }
+
+      .totals-left,
+      .totals-right {
+        display: block;
+        width: 100%;
+      }
+
+      .totals-left {
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ride-container">
+    <!-- ==================== ENCABEZADO ==================== -->
+    <div class="header">
+      <div class="header-left">
+        {% if branding.logo_url or empresa.logo %}
+          <div class="logo">
+            {% if branding.logo_url %}
+              <img src="{{ branding.logo_url }}" alt="Logo Empresa" />
+            {% elif empresa.logo %}
+              <img src="{{ empresa.logo.url }}" alt="Logo Empresa" />
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="company-info">
+          <div class="company-name">
+            {% if branding.company_name %}
+              {{ branding.company_name }}
+            {% else %}
+              {{ empresa.razon_social }}
+            {% endif %}
+          </div>
+
+          <div>
+            <strong>RUC:</strong> {{ empresa.ruc }}
+          </div>
+
+          {% if branding.line1 %}
+            <div>{{ branding.line1 }}</div>
+          {% endif %}
+          {% if branding.line2 %}
+            <div>{{ branding.line2 }}</div>
+          {% endif %}
+          {% if branding.line3 %}
+            <div>{{ branding.line3 }}</div>
+          {% endif %}
+          {% if branding.line4 %}
+            <div>{{ branding.line4 }}</div>
+          {% endif %}
+
+          <div style="margin-top: 8px;">
+            <strong>Dirección Matriz:</strong><br/>
+            {{ empresa.direccion_matriz }}
+          </div>
+
+          {% if empresa.telefono %}
+            <div style="margin-top: 4px;">
+              <strong>Teléfono:</strong> {{ empresa.telefono }}
+            </div>
+          {% endif %}
+
+          {% if empresa.email_contacto %}
+            <div>
+              <strong>Email:</strong> {{ empresa.email_contacto }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="ride-title">
+          RIDE - FACTURA ELECTRÓNICA
+        </div>
+
+        <div class="invoice-number">
+          No.: {{ establecimiento.codigo }}-{{ punto_emision.codigo }}-{{ invoice.secuencial|stringformat:"09d" }}
+        </div>
+
+        <div class="auth-section">
+          <span class="auth-label">NÚMERO DE AUTORIZACIÓN</span>
+          <div class="auth-value">
+            {% if invoice.numero_autorizacion %}
+              {{ invoice.numero_autorizacion }}
+            {% else %}
+              (Pendiente)
+            {% endif %}
+          </div>
+
+          <span class="auth-label">FECHA Y HORA DE AUTORIZACIÓN</span>
+          <div class="auth-value">
+            {% if invoice.fecha_autorizacion %}
+              {{ invoice.fecha_autorizacion|date:"d/m/Y H:i:s" }}
+            {% else %}
+              (Pendiente)
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="ambiente-badge {% if empresa.ambiente_efectivo == '2' %}produccion{% endif %}">
+          AMBIENTE: {% if empresa.ambiente_efectivo == "1" %}PRUEBAS{% elif empresa.ambiente_efectivo == "2" %}PRODUCCIÓN{% else %}DESCONOCIDO{% endif %}
+        </div>
+
+        <div style="margin: 5px 0; font-size: 9px;">
+          <strong>EMISIÓN:</strong> NORMAL
+        </div>
+
+        <div class="barcode-container">
+          <span class="auth-label">CLAVE DE ACCESO</span>
+          {# Aquí debería ir el código de barras Code128 #}
+          {# Se puede generar con una librería JS o backend #}
+          <div style="margin-top: 5px; font-family: monospace; font-size: 8px; word-break: break-all;">
+            {{ invoice.clave_acceso }}
+          </div>
+        </div>
+
+        <div class="estado-badge {{ invoice.estado }}">
+          Estado: {{ invoice.estado }}
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== INFORMACIÓN DEL COMPRADOR ==================== -->
+    <div class="section">
+      <div class="section-header">
+        Identificación del Comprador
+      </div>
+      <div class="section-content">
+        <div class="info-row">
+          <span class="info-label">Razón Social / Nombres:</span>
+          <span class="info-value">{{ cliente_nombre }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Identificación:</span>
+          <span class="info-value">{{ cliente_identificacion }}</span>
+          &nbsp;&nbsp;
+          <span class="info-label">Tipo:</span>
+          <span class="info-value">{{ invoice.tipo_identificacion_comprador }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Fecha de Emisión:</span>
+          <span class="info-value">{{ fecha_emision|date:"d/m/Y" }}</span>
+        </div>
+        {% if cliente_direccion %}
+          <div class="info-row">
+            <span class="info-label">Dirección:</span>
+            <span class="info-value">{{ cliente_direccion }}</span>
+          </div>
+        {% endif %}
+        {% if cliente_email or cliente_telefono %}
+          <div class="info-row">
+            {% if cliente_email %}
+              <span class="info-label">Email:</span>
+              <span class="info-value">{{ cliente_email }}</span>
+            {% endif %}
+            {% if cliente_telefono %}
+              &nbsp;&nbsp;
+              <span class="info-label">Teléfono:</span>
+              <span class="info-value">{{ cliente_telefono }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ==================== DETALLE DE PRODUCTOS/SERVICIOS ==================== -->
+    <div class="section">
+      <div class="section-header">
+        Detalle de Productos / Servicios
+      </div>
+      <div class="section-content" style="padding: 0;">
+        <table class="details-table">
+          <thead>
+            <tr>
+              <th style="width: 12%;">Código</th>
+              <th style="width: 35%;">Descripción</th>
+              <th style="width: 10%;">Cantidad</th>
+              <th style="width: 15%;">Precio Unitario</th>
+              <th style="width: 12%;">Descuento</th>
+              <th style="width: 16%;">Precio Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in lines %}
+              <tr>
+                <td class="text-center">{{ line.codigo_principal }}</td>
+                <td class="text-left">{{ line.descripcion }}</td>
+                <td class="text-right">{{ line.cantidad }}</td>
+                <td class="text-right">{{ line.precio_unitario }}</td>
+                <td class="text-right">{{ line.descuento }}</td>
+                <td class="text-right">{{ line.precio_total_sin_impuesto }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="text-center">Sin detalles</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== INFORMACIÓN ADICIONAL ==================== -->
+    {% if invoice.observaciones %}
+      <div class="section">
+        <div class="section-header">
+          Información Adicional
+        </div>
+        <div class="section-content">
+          <div class="info-row">
+            <span class="info-label">Observaciones:</span>
+            <span class="info-value">{{ invoice.observaciones }}</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- ==================== TOTALES E IMPUESTOS ==================== -->
+    <div class="totals-section">
+      <div class="totals-left">
+        <div class="qr-container">
+          {% if qr_data_uri %}
+            <img src="{{ qr_data_uri }}" alt="Código QR" />
+            <div class="qr-label">Escanea para verificar</div>
+          {% else %}
+            <div class="qr-label">QR no disponible</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="totals-right">
+        <table class="totals-table">
+          <tbody>
+            <tr>
+              <th>SUBTOTAL SIN IMPUESTOS</th>
+              <td>{{ totales.total_sin_impuestos }}</td>
+            </tr>
+            <tr>
+              <th>SUBTOTAL 0%</th>
+              <td>0.00</td>
+            </tr>
+            <tr>
+              <th>SUBTOTAL 15%</th>
+              <td>{{ totales.total_sin_impuestos }}</td>
+            </tr>
+            <tr>
+              <th>TOTAL DESCUENTO</th>
+              <td>{{ totales.total_descuento }}</td>
+            </tr>
+            {% for imp in impuestos %}
+              <tr>
+                <th>IVA {{ imp.tarifa }}%</th>
+                <td>{{ imp.valor }}</td>
+              </tr>
+            {% endfor %}
+            {% if invoice.propina and invoice.propina != "0.00" %}
+              <tr>
+                <th>PROPINA</th>
+                <td>{{ invoice.propina }}</td>
+              </tr>
+            {% endif %}
+            <tr class="total-final">
+              <th>VALOR TOTAL</th>
+              <td>{{ totales.importe_total }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Tabla de impuestos detallada -->
+        {% if impuestos %}
+          <div style="margin-top: 10px;">
+            <div style="font-weight: bold; font-size: 9px; margin-bottom: 5px;">
+              Resumen de Impuestos
+            </div>
+            <table style="font-size: 8px;">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Cód. %</th>
+                  <th>Tarifa %</th>
+                  <th>Base Imponible</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for imp in impuestos %}
+                  <tr>
+                    <td class="text-center">{{ imp.codigo }}</td>
+                    <td class="text-center">{{ imp.codigo_porcentaje }}</td>
+                    <td class="text-right">{{ imp.tarifa }}</td>
+                    <td class="text-right">{{ imp.base_imponible }}</td>
+                    <td class="text-right">{{ imp.valor }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ==================== CLAVE DE ACCESO ==================== -->
+    <div class="clave-acceso-section">
+      <div class="clave-label">CLAVE DE ACCESO</div>
+      <div class="clave-value">{{ invoice.clave_acceso }}</div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <div class="footer-info">
+      Documento electrónico generado el {{ now|date:"d/m/Y H:i" }}<br/>
+      Este documento no requiere firma autógrafa y tiene plena validez legal<br/>
+      conforme a la Ley de Comercio Electrónico, Firmas Electrónicas y Mensajes de Datos
+    </div>
+  </div>
+</body>
+</html>

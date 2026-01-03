@@ -1,0 +1,488 @@
+{# templates/billing/credit_note_ride.html #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>RIDE Nota de Crédito {{ credit_note.secuencial_display|default:credit_note.secuencial }}</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Helvetica", "Arial", sans-serif;
+      font-size: 11px;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      color: #111;
+    }
+
+    .ride-container {
+      border: 1px solid #444;
+      padding: 12px;
+    }
+
+    .header {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid #444;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .header-left,
+    .header-right {
+      display: table-cell;
+      vertical-align: top;
+    }
+
+    .header-left {
+      width: 55%;
+      padding-right: 8px;
+      border-right: 1px solid #ccc;
+    }
+
+    .header-right {
+      width: 45%;
+      padding-left: 8px;
+    }
+
+    .logo {
+      margin-bottom: 8px;
+    }
+
+    .logo img {
+      max-width: 180px;
+      max-height: 80px;
+    }
+
+    .company-name {
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .company-line {
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .title-box {
+      border: 1px solid #444;
+      padding: 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .title-box span {
+      display: block;
+    }
+
+    .field-pair {
+      margin-bottom: 2px;
+    }
+
+    .field-label {
+      font-weight: bold;
+    }
+
+    .section {
+      border: 1px solid #444;
+      padding: 6px;
+      margin-bottom: 6px;
+    }
+
+    .section-title {
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+
+    th,
+    td {
+      border: 1px solid #444;
+      padding: 3px 4px;
+    }
+
+    th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    td {
+      vertical-align: top;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .no-border {
+      border: none !important;
+    }
+
+    .totals-table {
+      width: 45%;
+      float: right;
+      margin-top: 8px;
+    }
+
+    .totals-table th {
+      text-align: left;
+      width: 60%;
+    }
+
+    .qr-box {
+      width: 30%;
+      float: left;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .qr-box img {
+      max-width: 140px;
+      max-height: 140px;
+    }
+
+    .clearfix::after {
+      content: "";
+      display: block;
+      clear: both;
+    }
+
+    .clave-acceso {
+      font-family: "Courier New", monospace;
+      font-size: 10px;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+
+    .small-text {
+      font-size: 9px;
+    }
+
+    .estado-label {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="ride-container">
+    <!-- Encabezado -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">
+          {% if branding.logo_url %}
+            <img src="{{ branding.logo_url }}" alt="Logo" />
+          {% elif empresa.logo %}
+            <img src="{{ empresa.logo.url }}" alt="Logo" />
+          {% endif %}
+        </div>
+
+        <div class="company-name">
+          {% if branding.company_name %}
+            {{ branding.company_name }}
+          {% else %}
+            {{ empresa.razon_social }}
+          {% endif %}
+        </div>
+
+        <div class="company-line">
+          {% if branding.line1 %}{{ branding.line1 }}<br />{% endif %}
+          {% if branding.line2 %}{{ branding.line2 }}<br />{% endif %}
+          {% if branding.line3 %}{{ branding.line3 }}<br />{% endif %}
+          {% if branding.line4 %}{{ branding.line4 }}<br />{% endif %}
+        </div>
+
+        <div class="company-line" style="margin-top: 6px;">
+          <span><strong>RUC:</strong> {{ empresa.ruc }}</span><br />
+          <span><strong>Dirección Matriz:</strong> {{ empresa.direccion_matriz }}</span><br />
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="title-box">
+          <span>RIDE - REPRESENTACIÓN IMPRESA</span>
+          <span>NOTA DE CRÉDITO</span>
+        </div>
+
+        <div class="field-pair">
+          <span class="field-label">No.:</span>
+          <span>
+            {% if establecimiento and punto_emision %}
+              {{ establecimiento.codigo }}-{{ punto_emision.codigo }}-{{ credit_note.secuencial|stringformat:"09d" }}
+            {% else %}
+              {{ credit_note.secuencial_display|default:credit_note.secuencial }}
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="field-pair">
+          <span class="field-label">Núm. Autorización:</span><br />
+          <span class="small-text">
+            {% if credit_note.numero_autorizacion %}
+              {{ credit_note.numero_autorizacion }}
+            {% else %}
+              {% if credit_note.estado == "AUTORIZADO" %}
+                (Pendiente de registrar número de autorización)
+              {% else %}
+                (Comprobante no autorizado)
+              {% endif %}
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="field-pair">
+          <span class="field-label">Fecha y hora autorización:</span><br />
+          <span class="small-text">
+            {% if credit_note.fecha_autorizacion %}
+              {{ credit_note.fecha_autorizacion|date:"d/m/Y H:i" }}
+            {% else %}
+              -
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="field-pair">
+          <span class="field-label">Ambiente:</span>
+          {% if empresa.ambiente_efectivo == "1" %}
+            PRUEBAS
+          {% elif empresa.ambiente_efectivo == "2" %}
+            PRODUCCIÓN
+          {% else %}
+            DESCONOCIDO
+          {% endif %}
+        </div>
+
+        <div class="field-pair">
+          <span class="field-label">Emisión:</span> NORMAL
+        </div>
+
+        <div class="estado-label">
+          Estado actual: {{ credit_note.estado }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos de la nota de crédito -->
+    <div class="section">
+      <div class="section-title">Datos de la nota de crédito</div>
+      <div class="field-pair">
+        <span class="field-label">Fecha de emisión:</span>
+        <span>{{ credit_note.fecha_emision|date:"d/m/Y" }}</span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Dirección establecimiento:</span>
+        <span>
+          {% if establecimiento and establecimiento.direccion %}
+            {{ establecimiento.direccion }}
+          {% else %}
+            {{ empresa.direccion_matriz }}
+          {% endif %}
+        </span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Documento modificado:</span>
+        <span>
+          {% if credit_note.cod_doc_modificado %}
+            {{ credit_note.cod_doc_modificado }} -
+          {% endif %}
+          {% if credit_note.num_doc_modificado %}
+            {{ credit_note.num_doc_modificado }}
+          {% elif credit_note.invoice %}
+            {{ credit_note.invoice.secuencial_display|default:credit_note.invoice.secuencial }}
+          {% endif %}
+        </span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Fecha emisión doc. sustento:</span>
+        <span>
+          {% if credit_note.fecha_emision_doc_sustento %}
+            {{ credit_note.fecha_emision_doc_sustento|date:"d/m/Y" }}
+          {% elif credit_note.invoice and credit_note.invoice.fecha_emision %}
+            {{ credit_note.invoice.fecha_emision|date:"d/m/Y" }}
+          {% else %}
+            -
+          {% endif %}
+        </span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Motivo de la nota de crédito:</span>
+        <span>{{ credit_note.motivo }}</span>
+      </div>
+    </div>
+
+    <!-- Datos del comprador -->
+    <div class="section">
+      <div class="section-title">Datos del comprador</div>
+      <div class="field-pair">
+        <span class="field-label">Razón social / Nombres:</span>
+        <span>{{ credit_note.razon_social_comprador }}</span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Identificación:</span>
+        <span>{{ credit_note.identificacion_comprador }}</span>
+        <span class="field-label"> &nbsp; Tipo:</span>
+        <span>{{ credit_note.tipo_identificacion_comprador }}</span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Dirección:</span>
+        <span>{{ credit_note.direccion_comprador }}</span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Email:</span>
+        <span>{{ credit_note.email_comprador }}</span>
+      </div>
+      <div class="field-pair">
+        <span class="field-label">Teléfono:</span>
+        <span>{{ credit_note.telefono_comprador }}</span>
+      </div>
+    </div>
+
+    <!-- Detalle de la nota de crédito -->
+    <div class="section">
+      <div class="section-title">Detalle</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>Cant.</th>
+            <th>Precio Unitario</th>
+            <th>Descuento</th>
+            <th>Precio Total sin Imp.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+            <tr>
+              <td class="text-center">
+                {% if line.codigo_principal %}
+                  {{ line.codigo_principal }}
+                {% elif line.codigo_auxiliar %}
+                  {{ line.codigo_auxiliar }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ line.descripcion }}</td>
+              {# FIX: mostrar cantidades en unidades (inventario es entero). #}
+              <td class="text-right">{{ line.cantidad|floatformat:0 }}</td>
+              <td class="text-right">{{ line.precio_unitario }}</td>
+              <td class="text-right">{{ line.descuento }}</td>
+              <td class="text-right">{{ line.precio_total_sin_impuesto }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="text-center">Sin detalles</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totales + impuestos + QR -->
+    <div class="section clearfix">
+      <div class="section-title">Totales</div>
+
+      <div class="qr-box">
+        {% if qr_data_uri %}
+          <div class="small-text">Código QR</div>
+          <img src="{{ qr_data_uri }}" alt="QR" />
+        {% else %}
+          <div class="small-text">QR no disponible</div>
+        {% endif %}
+      </div>
+
+      <table class="totals-table">
+        <tbody>
+          <tr>
+            <th>Total sin impuestos</th>
+            <td class="text-right">{{ credit_note.total_sin_impuestos }}</td>
+          </tr>
+          <tr>
+            <th>Valor modificación</th>
+            <td class="text-right">{{ credit_note.valor_modificacion }}</td>
+          </tr>
+          <tr>
+            <th>Total descuento</th>
+            <td class="text-right">{{ credit_note.total_descuento }}</td>
+          </tr>
+          <tr>
+            <th>Importe total</th>
+            <td class="text-right">
+              {{ credit_note.importe_total|default:credit_note.valor_modificacion }}
+            </td>
+          </tr>
+          <tr>
+            <th>Moneda</th>
+            <td class="text-right">{{ credit_note.moneda|default:"USD" }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="clearfix"></div>
+
+      <div style="margin-top: 8px;">
+        <div class="section-title">Resumen de impuestos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Cód. Porcentaje</th>
+              <th>Tarifa %</th>
+              <th>Base imponible</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for imp in impuestos %}
+              <tr>
+                <td class="text-center">{{ imp.codigo }}</td>
+                <td class="text-center">{{ imp.codigo_porcentaje }}</td>
+                <td class="text-right">{{ imp.tarifa }}</td>
+                <td class="text-right">{{ imp.base_imponible }}</td>
+                <td class="text-right">{{ imp.valor }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center">Sin impuestos registrados</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Clave de acceso -->
+    <div class="section">
+      <div class="section-title">Clave de acceso</div>
+      <div class="clave-acceso">
+        {{ credit_note.clave_acceso }}
+      </div>
+      <div class="small-text" style="margin-top: 4px;">
+        Documento generado: {{ now|date:"d/m/Y H:i" }}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

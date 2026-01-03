@@ -1,0 +1,30 @@
+[
+  {
+    "model": "bodega.inventorysettings",
+    "pk": 1,
+    "fields": {
+      "allow_negative_global": true,
+      "alerts_enabled": true
+    }
+  },
+  {
+    "model": "bodega.warehouse",
+    "pk": 1,
+    "fields": {
+      "name": "Bodega Central",
+      "code": "BOD-CEN",
+      "address": "Matriz - Cuenca",
+      "active": true
+    }
+  },
+  {
+    "model": "bodega.warehouse",
+    "pk": 2,
+    "fields": {
+      "name": "Bodega Taller",
+      "code": "BOD-TAL",
+      "address": "Taller - Cuenca",
+      "active": true
+    }
+  }
+]

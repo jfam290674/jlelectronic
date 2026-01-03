@@ -1,0 +1,88 @@
+# ==================================================================
+# CONFIGURACIÓN OBLIGATORIA CPANEL / CLOUDLINUX PASSENGER
+# (Sin esto, la aplicación Python NO arranca)
+# ==================================================================
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/nexosdel/call.nexosdelecuador.com"
+PassengerBaseURI "/"
+PassengerPython "/home/nexosdel/virtualenv/call.nexosdelecuador.com/3.11/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+# --- Activar Passenger ---
+PassengerEnabled on
+
+# ==================================================================
+# OPTIMIZACIÓN ESTÁTICOS Y SEGURIDAD (Tu configuración avanzada)
+# ==================================================================
+
+# --- Opciones seguras/minimalistas ---
+Options -MultiViews -Indexes
+DirectoryIndex index.html
+
+# --- ENTREGAR ESTÁTICOS DIRECTO (Bypass total de Python) ---
+<FilesMatch "\.(?:html|js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|json|webmanifest|txt|map|woff2?|ttf|eot|otf)$">
+    SetHandler none
+    Require all granted
+</FilesMatch>
+
+# --- LiteSpeed: Desactiva ESI/Cache para evitar corrupción de JSON/React ---
+<IfModule LiteSpeed>
+    ESIEnable off
+    CacheDisable public
+    CacheLookup public off
+</IfModule>
+
+# --- ModSecurity: Apagar para evitar bloqueos en API POST ---
+<IfModule mod_security.c>
+    SecFilterEngine Off
+    SecFilterScanPOST Off
+</IfModule>
+<IfModule mod_security2.c>
+    SecRuleEngine Off
+</IfModule>
+
+# --- Compresión: Evitar doble compresión en binarios ---
+<IfModule mod_deflate.c>
+    SetEnvIfNoCase Request_URI "\.(?:jpg|jpeg|png|gif|webp|ico|svg|woff2?|ttf|eot|otf|map)$" no-gzip=1
+</IfModule>
+<IfModule mod_brotli.c>
+    SetEnvIfNoCase Request_URI "\.(?:jpg|jpeg|png|gif|webp|ico|svg|woff2?|ttf|eot|otf|map)$" no-brotli=1
+</IfModule>
+
+# --- Tipos MIME correctos ---
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+    AddType application/json             .json
+    AddType application/javascript       .js
+    AddType text/javascript              .mjs
+    AddType image/svg+xml                .svg
+    AddType font/woff2                   .woff2
+</IfModule>
+
+# --- Cabeceras de seguridad básicas ---
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# ==================================================================
+# ENRUTAMIENTO (REWRITE ENGINE)
+# ==================================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Forzar HTTPS (Opcional pero recomendado)
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
+
+    # 2. Si el archivo existe físicamente (CSS, JS, Imágenes), sírvelo directo.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 3. Rutas explícitas de estáticos/media (seguridad extra)
+    RewriteRule ^(static/|media/) - [L]
+
+    # 4. Todo lo demás se pasa a la aplicación (Passenger/Django)
+    # Esto permite que Django maneje la API y el enrutamiento de la SPA
+    RewriteRule . - [L]
+</IfModule>

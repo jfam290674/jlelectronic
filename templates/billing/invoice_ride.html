@@ -1,0 +1,600 @@
+{# templates/billing/invoice_ride.html #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>RIDE Factura {{ invoice.secuencial_display|default:invoice.secuencial }}</title>
+    <style>
+        {% if dark_mode %}
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #f5f5f5;
+            background-color: #111111;
+            margin: 0;
+            padding: 16px;
+        }
+        .card-border {
+            border: 1px solid #444444;
+        }
+        .header-title {
+            background-color: #222222;
+            color: #f5f5f5;
+        }
+        .table-header {
+            background-color: #333333;
+            color: #f5f5f5;
+        }
+        th, td {
+            border-color: #444444;
+        }
+        {% else %}
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #000000;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 16px;
+        }
+        .card-border {
+            border: 1px solid #000000;
+        }
+        .header-title {
+            background-color: #f0f0f0;
+            color: #000000;
+        }
+        .table-header {
+            background-color: #e0e0e0;
+            color: #000000;
+        }
+        th, td {
+            border-color: #000000;
+        }
+        {% endif %}
+
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 3px 4px;
+            border: 1px solid;
+        }
+
+        .no-border {
+            border: none !important;
+        }
+
+        .mb-5 { margin-bottom: 5px; }
+        .mb-10 { margin-bottom: 10px; }
+        .mb-15 { margin-bottom: 15px; }
+        .mt-5 { margin-top: 5px; }
+        .mt-10 { margin-top: 10px; }
+
+        .p-3 { padding: 3px; }
+        .p-5 { padding: 5px; }
+        .p-8 { padding: 8px; }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        .small { font-size: 9px; }
+        .bold { font-weight: bold; }
+
+        .clave-acceso {
+            font-family: "Courier New", monospace;
+            font-size: 9px;
+            word-spacing: 2px;
+            letter-spacing: 1px;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+
+        .qr-box {
+            text-align: center;
+            padding-top: 4px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .w-25 { width: 25%; }
+        .w-30 { width: 30%; }
+        .w-40 { width: 40%; }
+        .w-50 { width: 50%; }
+        .w-60 { width: 60%; }
+        .w-70 { width: 70%; }
+        .w-100 { width: 100%; }
+
+        .align-top {
+            vertical-align: top;
+        }
+
+        .wrap {
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    {# ===========================================================
+       ENCABEZADO: LOGO / DATOS EMPRESA / DATOS FACTURA
+       =========================================================== #}
+    <table class="mb-10">
+        <tr>
+            {# Columna izquierda: logo + branding + datos empresa #}
+            <td class="align-top w-50">
+                <table class="card-border" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="p-8">
+                            {% if branding.logo_url %}
+                                <div class="mb-10">
+                                    <img src="{{ branding.logo_url }}" alt="Logo"
+                                         style="max-width: 180px; max-height: 80px;">
+                                </div>
+                            {% elif empresa.logo %}
+                                <div class="mb-10">
+                                    <img src="{{ empresa.logo.url }}" alt="Logo"
+                                         style="max-width: 180px; max-height: 80px;">
+                                </div>
+                            {% endif %}
+
+                            <div class="bold" style="font-size: 13px;">
+                                {{ branding.company_name|default:empresa.razon_social }}
+                            </div>
+
+                            {% if branding.line1 %}
+                                <div>{{ branding.line1 }}</div>
+                            {% endif %}
+                            {% if branding.line2 %}
+                                <div>{{ branding.line2 }}</div>
+                            {% else %}
+                                <div>RUC: {{ empresa.ruc }}</div>
+                            {% endif %}
+                            {% if branding.line3 %}
+                                <div>{{ branding.line3 }}</div>
+                            {% else %}
+                                <div>Matriz: {{ empresa.direccion_matriz }}</div>
+                            {% endif %}
+                            {% if branding.line4 %}
+                                <div>{{ branding.line4 }}</div>
+                            {% endif %}
+
+                            <div class="mt-5 small">
+                                <div><span class="bold">Teléfono:</span> {{ empresa.telefono_principal|default:"" }}</div>
+                                <div>
+                                    <span class="bold">Email:</span>
+                                    {{ empresa.email_facturacion|default:empresa.email|default:"" }}
+                                </div>
+                                {% if empresa.contribuyente_especial %}
+                                    <div>
+                                        <span class="bold">Contribuyente Especial Nro:</span>
+                                        {{ empresa.contribuyente_especial }}
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <span class="bold">Obligado a llevar contabilidad:</span>
+                                    {% if empresa.obligado_llevar_contabilidad or empresa.obligado_contabilidad %}
+                                        SI
+                                    {% else %}
+                                        NO
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+
+            {# Columna derecha: datos principales de la factura + clave de acceso #}
+            <td class="align-top w-50">
+                <table class="card-border" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="header-title text-center bold p-5">
+                            FACTURA<br>
+                            REPRESENTACIÓN IMPRESA DEL COMPROBANTE ELECTRÓNICO
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="p-5">
+                            <table class="no-border small" style="width: 100%;">
+                                <tr>
+                                    <td class="bold w-40">RUC:</td>
+                                    <td class="w-60">{{ empresa.ruc }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">No.:</td>
+                                    <td>
+                                        {% if establecimiento and punto_emision %}
+                                            {{ establecimiento.codigo }}-{{ punto_emision.codigo }}-
+                                        {% endif %}
+                                        {{ invoice.secuencial|stringformat:"09d" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Fecha emisión:</td>
+                                    <td>{{ invoice.fecha_emision|date:"d/m/Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Ambiente:</td>
+                                    <td>
+                                        {{ empresa.get_ambiente_efectivo_display|default:empresa.ambiente_efectivo }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Emisión:</td>
+                                    <td>
+                                        {% if empresa.get_tipo_emision_display %}
+                                            {{ empresa.get_tipo_emision_display }}
+                                        {% else %}
+                                            NORMAL
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">No. Autorización:</td>
+                                    <td class="wrap">
+                                        {% if invoice.numero_autorizacion %}
+                                            {{ invoice.numero_autorizacion }}
+                                        {% else %}
+                                            {% if invoice.estado == invoice.__class__.Estado.AUTORIZADO %}
+                                                (Autorizado sin número registrado)
+                                            {% else %}
+                                                (Comprobante no autorizado)
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Fecha Autorización:</td>
+                                    <td>
+                                        {% if invoice.fecha_autorizacion %}
+                                            {{ invoice.fecha_autorizacion|date:"d/m/Y H:i" }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Estado actual:</td>
+                                    <td>{{ invoice.estado }}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="p-5">
+                            <div class="bold small mb-3">CLAVE DE ACCESO</div>
+                            <div class="clave-acceso">
+                                {{ invoice.clave_acceso }}
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    {# QR + Dirección establecimiento / datos adicionales #}
+    <table class="mb-15">
+        <tr>
+            <td class="w-30 align-top">
+                {% if qr_data_uri %}
+                    <div class="qr-box">
+                        <img src="{{ qr_data_uri }}" alt="QR" style="width: 120px; height: 120px;">
+                        <div class="small">Consulta este comprobante en el portal SRI.</div>
+                    </div>
+                {% endif %}
+            </td>
+            <td class="w-70 align-top">
+                <table class="card-border w-100">
+                    <tr>
+                        <td class="p-5 small">
+                            <div class="section-title">Información del establecimiento</div>
+                            <table class="no-border small w-100">
+                                <tr>
+                                    <td class="bold w-30">Dirección matriz:</td>
+                                    <td class="w-70">{{ empresa.direccion_matriz }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="bold">Dirección sucursal:</td>
+                                    <td>
+                                        {% if establecimiento and establecimiento.direccion %}
+                                            {{ establecimiento.direccion }}
+                                        {% else %}
+                                            {{ empresa.direccion_matriz }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if invoice.guia_remision %}
+                                    <tr>
+                                        <td class="bold">Guía de remisión:</td>
+                                        <td>{{ invoice.guia_remision }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% if invoice.placa %}
+                                    <tr>
+                                        <td class="bold">Placa vehículo:</td>
+                                        <td>{{ invoice.placa }}</td>
+                                    </tr>
+                                {% endif %}
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    {# ===========================================================
+       DATOS DEL COMPRADOR
+       =========================================================== #}
+    <table class="card-border mb-10">
+        <tr class="table-header">
+            <th colspan="4" class="text-left p-5">Datos del comprador</th>
+        </tr>
+        <tr>
+            <td class="bold w-25">Razón social / Nombres:</td>
+            <td class="w-75" colspan="3">
+                {{ invoice.razon_social_comprador|default:"" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Identificación:</td>
+            <td class="w-25">
+                {{ invoice.identificacion_comprador|default:"" }}
+            </td>
+            <td class="bold w-25">Tipo identificación:</td>
+            <td class="w-25">
+                {{ invoice.tipo_identificacion_comprador|default:"" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Dirección:</td>
+            <td colspan="3">
+                {{ invoice.direccion_comprador|default:"" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="bold">Email:</td>
+            <td>
+                {{ invoice.email_comprador|default:"" }}
+            </td>
+            <td class="bold">Teléfono:</td>
+            <td>
+                {{ invoice.telefono_comprador|default:"" }}
+            </td>
+        </tr>
+    </table>
+
+    {# ===========================================================
+       DETALLE DE LA FACTURA
+       =========================================================== #}
+    <table class="mb-10">
+        <tr class="table-header">
+            <th class="small">Código</th>
+            <th class="small">Descripción</th>
+            <th class="small">Cant.</th>
+            <th class="small">Precio unitario</th>
+            <th class="small">Descuento</th>
+            <th class="small">Subtotal</th>
+        </tr>
+        {% for line in lines %}
+            <tr>
+                <td class="small text-center">
+                    {{ line.codigo_principal|default:line.codigo|default:"" }}
+                </td>
+                <td class="small wrap">
+                    {{ line.descripcion|default:"" }}
+                </td>
+                <td class="small text-right">
+                    {{ line.cantidad|default:""|floatformat:2 }}
+                </td>
+                <td class="small text-right">
+                    {{ line.precio_unitario|default:""|floatformat:4 }}
+                </td>
+                <td class="small text-right">
+                    {{ line.descuento|default:""|floatformat:2 }}
+                </td>
+                <td class="small text-right">
+                    {{ line.precio_total_sin_impuesto|default:""|floatformat:2 }}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6" class="text-center small">
+                    No existen detalles registrados.
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {# ===========================================================
+       TOTALES + IMPUESTOS + FORMAS DE PAGO
+       =========================================================== #}
+    <table class="mb-10">
+        <tr>
+            {# Resumen de impuestos a la izquierda #}
+            <td class="w-60 align-top">
+                <table class="card-border w-100">
+                    <tr class="table-header">
+                        <th colspan="5" class="text-left p-5">Resumen de impuestos</th>
+                    </tr>
+                    <tr>
+                        <th class="small">Código</th>
+                        <th class="small">Cód. Porcentaje</th>
+                        <th class="small">Tarifa %</th>
+                        <th class="small">Base imponible</th>
+                        <th class="small">Valor</th>
+                    </tr>
+                    {% for imp in impuestos %}
+                        <tr>
+                            <td class="small text-center">{{ imp.codigo }}</td>
+                            <td class="small text-center">{{ imp.codigo_porcentaje }}</td>
+                            <td class="small text-right">{{ imp.tarifa }}</td>
+                            <td class="small text-right">{{ imp.base_imponible }}</td>
+                            <td class="small text-right">{{ imp.valor }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="small text-center">
+                                Sin impuestos registrados.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </table>
+
+                <table class="card-border w-100 mt-10">
+                    <tr class="table-header">
+                        <th colspan="4" class="text-left p-5">Formas de pago</th>
+                    </tr>
+                    <tr>
+                        <th class="small">Forma de pago</th>
+                        <th class="small">Plazo</th>
+                        <th class="small">Unidad</th>
+                        <th class="small">Valor</th>
+                    </tr>
+                    {# Versión simple: una sola forma de pago asociada a la factura #}
+                    <tr>
+                        <td class="small">
+                            {% if invoice.forma_pago %}
+                                {{ invoice.forma_pago }}
+                                {% if invoice.get_forma_pago_display %}
+                                    - {{ invoice.get_forma_pago_display }}
+                                {% endif %}
+                            {% else %}
+                                {% if invoice.get_forma_pago_display %}
+                                    {{ invoice.get_forma_pago_display }}
+                                {% else %}
+                                    01 - SIN ESPECIFICAR
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="small text-right">
+                            {{ invoice.plazo_pago|default:0 }}
+                        </td>
+                        <td class="small text-center">días</td>
+                        <td class="small text-right">
+                            {{ invoice.importe_total|default:""|floatformat:2 }}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+
+            {# Totales + QR a la derecha #}
+            <td class="w-40 align-top">
+                <table class="card-border w-100">
+                    <tr class="table-header">
+                        <th colspan="2" class="text-left p-5">Totales</th>
+                    </tr>
+                    <tr>
+                        <td class="small bold">Total sin impuestos</td>
+                        <td class="small text-right">
+                            {{ invoice.total_sin_impuestos|default:""|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="small bold">Total descuento</td>
+                        <td class="small text-right">
+                            {{ invoice.total_descuento|default:""|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="small bold">Propina</td>
+                        <td class="small text-right">
+                            {{ invoice.propina|default:""|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="small bold">Importe total</td>
+                        <td class="small text-right">
+                            {{ invoice.importe_total|default:""|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="small bold">Moneda</td>
+                        <td class="small text-right">
+                            {{ invoice.moneda|default:"USD" }}
+                        </td>
+                    </tr>
+                </table>
+
+                {% if qr_data_uri %}
+                    <table class="card-border w-100 mt-10">
+                        <tr>
+                            <td class="p-5 text-center">
+                                <div class="small mb-5">Código QR</div>
+                                <img src="{{ qr_data_uri }}" alt="QR"
+                                     style="width: 120px; height: 120px;">
+                            </td>
+                        </tr>
+                    </table>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    {# ===========================================================
+       INFORMACIÓN ADICIONAL
+       =========================================================== #}
+    <table class="card-border w-100 mb-10">
+        <tr class="table-header">
+            <th class="text-left p-5">Información adicional</th>
+        </tr>
+        <tr>
+            <td class="p-5 small">
+                <table class="no-border w-100 small">
+                    {% if invoice.condicion_pago %}
+                        <tr>
+                            <td class="bold w-25">Condición de pago:</td>
+                            <td class="w-75">
+                                {{ invoice.condicion_pago }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if invoice.referencia_pago %}
+                        <tr>
+                            <td class="bold">Referencia de pago:</td>
+                            <td>
+                                {{ invoice.referencia_pago }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if invoice.observaciones %}
+                        <tr>
+                            <td class="bold align-top">Observaciones:</td>
+                            <td class="wrap">
+                                {{ invoice.observaciones }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if not invoice.condicion_pago and not invoice.referencia_pago and not invoice.observaciones %}
+                        <tr>
+                            <td colspan="2">
+                                No hay información adicional registrada.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="small mt-10">
+        Impreso el {{ now|date:"d/m/Y H:i" }}.
+    </div>
+
+</div>
+</body>
+</html>
