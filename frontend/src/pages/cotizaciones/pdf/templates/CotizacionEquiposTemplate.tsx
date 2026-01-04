@@ -1,4 +1,4 @@
-//cotizacion-equipos-template.tsx
+// frontend/src/pages/cotizaciones/pdf/templates/CotizacionEquiposTemplate.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ShellRenderCtx } from "../CotizacionViewerShell";
 import type { Item } from "../types";
@@ -13,6 +13,9 @@ import type { Item } from "../types";
  * Importante:
  * - Esto NO cambia el PDF backend; solo cambia la vista web de /pdf-equipos.
  * - Para PDF exclusivo de equipos: se requiere endpoint backend + override en el Shell (paso posterior).
+ *
+ * Regla clave:
+ * - Aquí NO se hace fetch(/api/productos/{id}/...). Se consume SOLO lo que viene en cada item.
  */
 
 /* ===================== Helpers UI ===================== */
@@ -71,46 +74,65 @@ function moveInArray<T>(arr: T[], from: number, to: number) {
   return next;
 }
 
-/* ===================== Tipos de Producto (subset) ===================== */
-type ProductoImagen = {
-  id: number;
-  foto_url: string;
-  orden: number;
-};
+function safeStr(v: any): string {
+  return (v ?? "").toString().trim();
+}
 
+function safeImgUrl(url?: string | null) {
+  const v = safeStr(url);
+  return v.length > 0 ? v : "";
+}
+
+function pickUrlFromUnknown(x: any): string {
+  // Acepta: string, {foto_url}, {url}, {foto}, {image_url}, {src}
+  if (!x) return "";
+  if (typeof x === "string") return safeImgUrl(x);
+  if (typeof x === "object") {
+    return (
+      safeImgUrl(x.foto_url) ||
+      safeImgUrl(x.url) ||
+      safeImgUrl(x.foto) ||
+      safeImgUrl(x.image_url) ||
+      safeImgUrl(x.src) ||
+      ""
+    );
+  }
+  return "";
+}
+
+function normalizeImageList(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    const out = val.map(pickUrlFromUnknown).filter(Boolean);
+    // Dedup conservador
+    return Array.from(new Set(out));
+  }
+  // A veces viene como string único
+  const one = pickUrlFromUnknown(val);
+  return one ? [one] : [];
+}
+
+/* ===================== Tipos “producto” (desde ITEMS, no fetch) ===================== */
 type ProductoDetail = {
   id: number;
+
   nombre_equipo?: string;
   codigo?: string | null;
   categoria?: string;
 
-  // Secciones
-  descripcion?: string;
-  descripcion_adicional?: string;
-  especificaciones?: string;
+  // Secciones texto
+  descripcion?: string; // producto_descripcion (ideal)
+  descripcion_adicional?: string; // producto_descripcion_adicional
+  especificaciones?: string; // producto_especificaciones
 
-  // Legacy + nuevos arrays
-  foto_url?: string;
-  foto?: string | null;
+  // Imagen principal
+  foto_url?: string; // producto_imagen_url (principal)
 
-  foto_descripcion_url?: string;
-  foto_especificaciones_url?: string;
-
-  descripcion_fotos?: ProductoImagen[];
-  especificaciones_fotos?: ProductoImagen[];
-  imagenes?: ProductoImagen[];
-
-  updated_at?: string;
+  // Secciones fotos
+  descripcion_fotos: string[]; // producto_descripcion_fotos
+  especificaciones_fotos: string[]; // producto_especificaciones_fotos
+  imagenes: string[]; // producto_imagenes (galería)
 };
-
-function sortByOrden(a: ProductoImagen, b: ProductoImagen) {
-  return (a?.orden ?? 0) - (b?.orden ?? 0);
-}
-
-function safeImgUrl(url?: string | null) {
-  const v = (url || "").trim();
-  return v.length > 0 ? v : "";
-}
 
 /* ===================== Bloques y opciones ===================== */
 type SectionKey = "resumen" | "descText" | "descFotos" | "specText" | "specFotos" | "galeria";
@@ -177,7 +199,11 @@ function Badge(props: { children: any; tone?: "blue" | "orange" | "slate" }) {
       : tone === "orange"
         ? "bg-orange-50 text-orange-800 border-orange-200"
         : "bg-slate-50 text-slate-800 border-slate-200";
-  return <span className={classNames("inline-flex items-center px-2 py-0.5 text-[11px] rounded-md border", cls)}>{props.children}</span>;
+  return (
+    <span className={classNames("inline-flex items-center px-2 py-0.5 text-[11px] rounded-md border", cls)}>
+      {props.children}
+    </span>
+  );
 }
 
 function SafeImage(props: { src: string; alt?: string; className?: string; style?: any; title?: string; onClick?: () => void }) {
@@ -304,46 +330,65 @@ alimenticio.`,
   const items: Item[] = useMemo(() => (Array.isArray(data?.items) ? data.items : []), [data?.items]);
 
   /**
-   * Bridge: render “tipo productos” desde lo que venga en items.
-   * NOTA: si el backend aún no envía secciones/fotos, aquí solo podremos mostrar lo disponible.
-   * Cuando el backend exponga ProductoDetail por item/producto_id, este template lo consumirá sin rediseño.
+   * IMPORTANTÍSIMO:
+   * NO hacemos fetch de productos.
+   * Consumimos lo que ya viene por ítem (llaves nuevas exactas) + fallback legacy:
+   *
+   * - producto_imagenes
+   * - producto_descripcion_fotos
+   * - producto_especificaciones_fotos
+   * - producto_descripcion_adicional
+   * - producto_especificaciones
+   * - producto_descripcion
    */
   const productoByIndex: ProductoDetail[] = useMemo(() => {
     return items.map((it) => {
-      const base: ProductoDetail = {
-        id: Number((it as any)?.producto_id || 0) || 0,
-        nombre_equipo: (it as any)?.producto_nombre || "",
-        categoria: (it as any)?.producto_categoria || "",
-        descripcion: (it as any)?.producto_descripcion || "",
-        descripcion_adicional: (it as any)?.producto_descripcion_adicional || (it as any)?.producto_caracteristicas || "",
-        especificaciones: (it as any)?.producto_especificaciones || "",
+      const anyIt: any = it as any;
 
-        foto_url: safeImgUrl((it as any)?.producto_imagen_url || ""),
-        descripcion_fotos: [],
-        especificaciones_fotos: [],
-        imagenes: [],
+      // Texto (prioridad: llaves nuevas exactas)
+      const descripcion = safeStr(anyIt.producto_descripcion || anyIt.descripcion || "");
+      const descripcion_adicional = safeStr(anyIt.producto_descripcion_adicional || anyIt.producto_caracteristicas || "");
+      const especificaciones = safeStr(anyIt.producto_especificaciones || "");
+
+      // Imagen principal: snapshot del ítem
+      const foto_url = safeImgUrl(anyIt.producto_imagen_url || anyIt.foto_url || "");
+
+      // Fotos por secciones: NUEVAS LLAVES (preferidas)
+      const descFotos = normalizeImageList(anyIt.producto_descripcion_fotos);
+      const specFotos = normalizeImageList(anyIt.producto_especificaciones_fotos);
+      const galeria = normalizeImageList(anyIt.producto_imagenes);
+
+      // Compatibilidad: arrays legacy si aún existen en payload
+      const legacyDescArray = normalizeImageList(anyIt.descripcion_fotos);
+      const legacySpecArray = normalizeImageList(anyIt.especificaciones_fotos);
+      const legacyGalArray = normalizeImageList(anyIt.imagenes);
+
+      // Compatibilidad: legacy single urls
+      const legacyDescSingle = safeImgUrl(anyIt.foto_descripcion_url || "");
+      const legacySpecSingle = safeImgUrl(anyIt.foto_especificaciones_url || "");
+
+      const finalDescFotos = descFotos.length ? descFotos : legacyDescArray.length ? legacyDescArray : legacyDescSingle ? [legacyDescSingle] : [];
+      const finalSpecFotos = specFotos.length ? specFotos : legacySpecArray.length ? legacySpecArray : legacySpecSingle ? [legacySpecSingle] : [];
+      const finalGaleria = galeria.length ? galeria : legacyGalArray.length ? legacyGalArray : [];
+
+      const p: ProductoDetail = {
+        id: Number(anyIt?.producto_id || 0) || 0,
+        nombre_equipo: safeStr(anyIt?.producto_nombre || ""),
+        codigo: anyIt?.producto_codigo ?? null,
+        categoria: safeStr(anyIt?.producto_categoria || ""),
+
+        descripcion,
+        descripcion_adicional,
+        especificaciones,
+
+        foto_url,
+
+        descripcion_fotos: finalDescFotos,
+        especificaciones_fotos: finalSpecFotos,
+        imagenes: finalGaleria,
       };
 
-      // Arrays (forward compatible)
-      const descFotos = Array.isArray((it as any)?.descripcion_fotos) ? ((it as any).descripcion_fotos as ProductoImagen[]) : null;
-      const specFotos = Array.isArray((it as any)?.especificaciones_fotos) ? ((it as any).especificaciones_fotos as ProductoImagen[]) : null;
-      const gal = Array.isArray((it as any)?.imagenes) ? ((it as any).imagenes as ProductoImagen[]) : null;
-
-      if (descFotos) base.descripcion_fotos = descFotos.slice().sort(sortByOrden);
-      if (specFotos) base.especificaciones_fotos = specFotos.slice().sort(sortByOrden);
-      if (gal) base.imagenes = gal.slice().sort(sortByOrden);
-
-      // Legacy single urls
-      const legacyDesc = safeImgUrl((it as any)?.foto_descripcion_url || "");
-      const legacySpec = safeImgUrl((it as any)?.foto_especificaciones_url || "");
-      if (legacyDesc && (!base.descripcion_fotos || base.descripcion_fotos.length === 0)) {
-        base.descripcion_fotos = [{ id: -1, foto_url: legacyDesc, orden: 0 }];
-      }
-      if (legacySpec && (!base.especificaciones_fotos || base.especificaciones_fotos.length === 0)) {
-        base.especificaciones_fotos = [{ id: -2, foto_url: legacySpec, orden: 0 }];
-      }
-
-      return base;
+      return p;
     });
   }, [items]);
 
@@ -584,9 +629,7 @@ alimenticio.`,
                 </span>
               </div>
 
-              <div className="no-print text-xs text-slate-600">
-                Personaliza lo que se muestra y el orden antes de enviar.
-              </div>
+              <div className="no-print text-xs text-slate-600">Personaliza lo que se muestra y el orden antes de enviar.</div>
             </div>
 
             <div className="p-4 bg-white">
@@ -598,9 +641,7 @@ alimenticio.`,
                       <div className="text-sm font-semibold" style={{ color: brandBlue }}>
                         Carta de presentación
                       </div>
-                      <div className="text-xs text-slate-500">
-                        Este bloque va siempre al inicio. Puedes complementarlo con texto adicional.
-                      </div>
+                      <div className="text-xs text-slate-500">Este bloque va siempre al inicio. Puedes complementarlo con texto adicional.</div>
                     </div>
 
                     <div className="p-3">
@@ -730,9 +771,7 @@ alimenticio.`,
                 <div className="text-sm font-semibold" style={{ color: brandBlue }}>
                   Contenido de la proforma (Equipos)
                 </div>
-                <div className="text-xs text-slate-500">
-                  Reordena bloques y ajusta secciones por ítem. Puedes insertar textos/imágenes entre equipos.
-                </div>
+                <div className="text-xs text-slate-500">Reordena bloques y ajusta secciones por ítem. Puedes insertar textos/imágenes entre equipos.</div>
               </div>
 
               <div className="no-print flex items-center gap-2">
@@ -867,7 +906,7 @@ alimenticio.`,
                 if (b.kind === "divider") {
                   return (
                     <div key={b.key} className="rounded-2xl border bg-slate-50" style={{ borderColor: `${brandBlue}18` }}>
-                      {BlockToolbar ? <div className="no-print px-3 py-2">{BlockToolbar}</div> : null}
+                      <div className="no-print px-3 py-2">{BlockToolbar}</div>
                       <div className="px-3 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-[1px] flex-1 bg-slate-200" />
@@ -894,11 +933,9 @@ alimenticio.`,
                 if (b.kind === "text") {
                   return (
                     <div key={b.key} className="rounded-2xl border bg-white shadow-sm" style={{ borderColor: `${brandBlue}22` }}>
-                      {BlockToolbar ? (
-                        <div className="no-print px-3 py-2 bg-slate-50 border-b" style={{ borderColor: `${brandBlue}12` }}>
-                          {BlockToolbar}
-                        </div>
-                      ) : null}
+                      <div className="no-print px-3 py-2 bg-slate-50 border-b" style={{ borderColor: `${brandBlue}12` }}>
+                        {BlockToolbar}
+                      </div>
                       <div className="p-3">
                         <div className="text-xs uppercase tracking-wide" style={{ color: brandBlue }}>
                           {b.title}
@@ -939,11 +976,9 @@ alimenticio.`,
                   const hasImg = (b.imageDataUrl || "").trim().length > 0;
                   return (
                     <div key={b.key} className="rounded-2xl border bg-white shadow-sm" style={{ borderColor: `${brandBlue}22` }}>
-                      {BlockToolbar ? (
-                        <div className="no-print px-3 py-2 bg-slate-50 border-b" style={{ borderColor: `${brandBlue}12` }}>
-                          {BlockToolbar}
-                        </div>
-                      ) : null}
+                      <div className="no-print px-3 py-2 bg-slate-50 border-b" style={{ borderColor: `${brandBlue}12` }}>
+                        {BlockToolbar}
+                      </div>
 
                       <div className="p-3">
                         <div className="text-xs uppercase tracking-wide" style={{ color: brandBlue }}>
@@ -1050,7 +1085,7 @@ alimenticio.`,
                 if (!it || !p || !t) {
                   return (
                     <div key={b.key} className="rounded-2xl border bg-white p-3" style={{ borderColor: `${brandBlue}22` }}>
-                      {BlockToolbar}
+                      <div className="no-print">{BlockToolbar}</div>
                       <div className="mt-2 text-sm text-slate-600">Cargando ítem…</div>
                     </div>
                   );
@@ -1059,9 +1094,9 @@ alimenticio.`,
                 const rawMain = safeImgUrl(p.foto_url || "");
                 const mainUrl = rawMain ? withCacheBuster(rawMain, itemImgCb) : "";
 
-                const descFotos = (p.descripcion_fotos || []).map((x) => safeImgUrl(x?.foto_url)).filter(Boolean) as string[];
-                const specFotos = (p.especificaciones_fotos || []).map((x) => safeImgUrl(x?.foto_url)).filter(Boolean) as string[];
-                const galeria = (p.imagenes || []).map((x) => safeImgUrl(x?.foto_url)).filter(Boolean) as string[];
+                const descFotos = (p.descripcion_fotos || []).map((u) => safeImgUrl(u)).filter(Boolean) as string[];
+                const specFotos = (p.especificaciones_fotos || []).map((u) => safeImgUrl(u)).filter(Boolean) as string[];
+                const galeria = (p.imagenes || []).map((u) => safeImgUrl(u)).filter(Boolean) as string[];
 
                 const isHidden = (section: "descFotos" | "specFotos" | "galeria", url: string) => {
                   const list = t.hidden?.[section] || [];
@@ -1135,9 +1170,7 @@ alimenticio.`,
                               {(p.descripcion || "").trim() ? (
                                 <div className="whitespace-pre-wrap">{p.descripcion}</div>
                               ) : (
-                                <div className="text-slate-500">
-                                  (Aún no hay “descripción” disponible para este ítem en la respuesta de cotización.)
-                                </div>
+                                <div className="text-slate-500">(Este ítem aún no trae “producto_descripcion”.)</div>
                               )}
                             </div>
                           </div>
@@ -1473,9 +1506,7 @@ alimenticio.`,
                             </button>
                           </div>
 
-                          <div className="pt-2 text-[11px] text-slate-500">
-                            Ocultar/restaurar aquí no borra nada; solo controla lo que sale en la proforma.
-                          </div>
+                          <div className="pt-2 text-[11px] text-slate-500">Ocultar/restaurar aquí no borra nada; solo controla lo que sale en la proforma.</div>
                         </div>
                       </div>
                     </div>
@@ -1484,11 +1515,9 @@ alimenticio.`,
 
                 return (
                   <div key={b.key} className="rounded-2xl border shadow-sm overflow-hidden" style={{ borderColor: `${brandBlue}22` }}>
-                    {BlockToolbar ? (
-                      <div className="no-print bg-slate-50 border-b px-3 py-2" style={{ borderColor: `${brandBlue}12` }}>
-                        {BlockToolbar}
-                      </div>
-                    ) : null}
+                    <div className="no-print bg-slate-50 border-b px-3 py-2" style={{ borderColor: `${brandBlue}12` }}>
+                      {BlockToolbar}
+                    </div>
 
                     {ItemHeader}
                     {t.expanded ? ItemControls : null}

@@ -69,7 +69,7 @@ export default function ReportList(): React.ReactElement {
         const data = await listClients({ page_size: 1000 }); // Cargar todos los clientes
         setClients(data.results || []);
       } catch (err: any) {
-        console.error("Error cargando clientes:", err);
+        // Error cargando clientes (no crítico - el select muestra "Sin resultados")
       } finally {
         setLoadingClients(false);
       }

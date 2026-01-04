@@ -374,7 +374,7 @@ export default function ReportWizard(): React.ReactElement {
       // 🆕 Agregar status (backend lo acepta, tipos TS pendientes de actualizar)
       const payload = { ...basePayload, status: "IN_PROGRESS" as const };
 
-      console.log("📤 Enviando payload:", JSON.stringify(payload, null, 2));
+      // Debug: Payload enviado (comentado para producción)
 
       if (isEdit && reportId) {
         await updateReport(reportId, payload);
@@ -390,7 +390,7 @@ export default function ReportWizard(): React.ReactElement {
                 order: photo.order,
               });
             } catch (err: any) {
-              console.error("Error subiendo foto:", err);
+              console.error("Error subiendo foto:", (err as any)?.message || err);
               toast.warning(`No se pudo subir una foto: ${err.message}`);
             }
           }
@@ -403,7 +403,7 @@ export default function ReportWizard(): React.ReactElement {
       } else {
         const created = await createReport(payload);
         
-        console.log("✅ Informe creado:", created);
+        // Debug: Informe creado exitosamente
 
         // ✅ SUBIR FOTOS NUEVAS
         for (const photo of state.photos) {
@@ -416,7 +416,7 @@ export default function ReportWizard(): React.ReactElement {
                 order: photo.order,
               });
             } catch (err: any) {
-              console.error("Error subiendo foto:", err);
+              console.error("Error subiendo foto:", (err as any)?.message || err);
               toast.warning(`No se pudo subir una foto: ${err.message}`);
             }
           }
@@ -439,8 +439,7 @@ export default function ReportWizard(): React.ReactElement {
         navigate("/tecnicos/reports");
       }
     } catch (err: any) {
-      console.error("❌ Error al guardar:", err);
-      console.error("❌ Error response:", err.response?.data);
+      console.error("Error al guardar:", (err as any)?.response?.data?.detail || (err as any)?.message);
       
       let errorMessage = "❌ Error al guardar el informe";
       if (err.response?.data) {
@@ -1145,7 +1144,7 @@ function Step2TechnicalDetails({
           RECOMMENDATION: results[3].results,
         });
       } catch (err) {
-        console.error("Error cargando snippets:", err);
+        // Error cargando snippets (no crítico)
       }
     })();
   }, []);

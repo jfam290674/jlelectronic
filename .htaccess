@@ -1,18 +1,18 @@
 # ==================================================================
-# CONFIGURACIÓN OBLIGATORIA CPANEL / CLOUDLINUX PASSENGER
-# (Sin esto, la aplicación Python NO arranca)
+# CONFIGURACIÓN OBLIGATORIA JL ELECTRONIC S.A.S. - PASSENGER
+# (Configurado para el entorno de producción en cPanel)
 # ==================================================================
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
-PassengerAppRoot "/home/nexosdel/call.nexosdelecuador.com"
+PassengerAppRoot "/home/nexosdel/jlelectronic.nexosdelecuador.com"
 PassengerBaseURI "/"
-PassengerPython "/home/nexosdel/virtualenv/call.nexosdelecuador.com/3.11/bin/python"
+PassengerPython "/home/nexosdel/virtualenv/jlelectronic.nexosdelecuador.com/3.11/bin/python"
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
 
 # --- Activar Passenger ---
 PassengerEnabled on
 
 # ==================================================================
-# OPTIMIZACIÓN ESTÁTICOS Y SEGURIDAD (Tu configuración avanzada)
+# OPTIMIZACIÓN ESTÁTICOS Y SEGURIDAD (Blindaje Fase 1.5)
 # ==================================================================
 
 # --- Opciones seguras/minimalistas ---
@@ -20,6 +20,7 @@ Options -MultiViews -Indexes
 DirectoryIndex index.html
 
 # --- ENTREGAR ESTÁTICOS DIRECTO (Bypass total de Python) ---
+# Optimizado para los assets generados por tu 'yarn build'
 <FilesMatch "\.(?:html|js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|json|webmanifest|txt|map|woff2?|ttf|eot|otf)$">
     SetHandler none
     Require all granted
@@ -32,7 +33,7 @@ DirectoryIndex index.html
     CacheLookup public off
 </IfModule>
 
-# --- ModSecurity: Apagar para evitar bloqueos en API POST ---
+# --- ModSecurity: Apagar para evitar bloqueos en API POST del SRI ---
 <IfModule mod_security.c>
     SecFilterEngine Off
     SecFilterScanPOST Off
@@ -49,7 +50,7 @@ DirectoryIndex index.html
     SetEnvIfNoCase Request_URI "\.(?:jpg|jpeg|png|gif|webp|ico|svg|woff2?|ttf|eot|otf|map)$" no-brotli=1
 </IfModule>
 
-# --- Tipos MIME correctos ---
+# --- Tipos MIME correctos (Requerido para PWA de JL Electronic) ---
 <IfModule mod_mime.c>
     AddType application/manifest+json .webmanifest
     AddType application/json             .json
@@ -70,19 +71,23 @@ DirectoryIndex index.html
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # 1. Forzar HTTPS (Opcional pero recomendado)
+    # 1. Forzar HTTPS (Requerido para transmisión SRI 2026)
     RewriteCond %{HTTPS} !=on
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
 
-    # 2. Si el archivo existe físicamente (CSS, JS, Imágenes), sírvelo directo.
+    # 2. Si el archivo existe físicamente en el build de React, sírvelo.
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # 3. Rutas explícitas de estáticos/media (seguridad extra)
+    # 3. Rutas explícitas de estáticos/media de Django
     RewriteRule ^(static/|media/) - [L]
 
-    # 4. Todo lo demás se pasa a la aplicación (Passenger/Django)
-    # Esto permite que Django maneje la API y el enrutamiento de la SPA
+    # 4. SPA Routing: Redirigir todo al index.html del frontend
+    # Excepto las llamadas a la API o al Admin de Django
+    RewriteCond %{REQUEST_URI} !^/(api|admin)
+    RewriteRule ^ /index.html [L]
+
+    # 5. Todo lo demás (API/Admin) se pasa a Passenger/Django
     RewriteRule . - [L]
 </IfModule>

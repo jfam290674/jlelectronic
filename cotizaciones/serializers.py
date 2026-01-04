@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, List
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -84,40 +84,279 @@ def _normalize_img_url(val: Any) -> str:
     return f"/{s}"
 
 
+def _iter_image_like(value: Any) -> Iterable[Any]:
+    """
+    Devuelve un iterable para:
+      - RelatedManager/QuerySet: value.all()
+      - list/tuple/set
+      - valor singular (lo convierte a lista de 1)
+      - None -> []
+    """
+    if not value:
+        return []
+    try:
+        if hasattr(value, "all") and callable(getattr(value, "all")):
+            return value.all()
+    except Exception:
+        pass
+    if isinstance(value, (list, tuple, set)):
+        return value
+    return [value]
+
+
+def _extract_urls(value: Any) -> List[str]:
+    """
+    Extrae URLs normalizadas de un contenedor de imágenes.
+    Soporta:
+      - strings
+      - objetos con .url
+      - objetos con .image/.foto/.archivo (que a su vez tengan .url)
+    """
+    out: List[str] = []
+    for it in _iter_image_like(value):
+        if not it:
+            continue
+
+        # string directa
+        if isinstance(it, str):
+            u = _normalize_img_url(it)
+            if u:
+                out.append(u)
+            continue
+
+        # objeto con url
+        u = getattr(it, "url", None)
+        if isinstance(u, str) and u:
+            u2 = _normalize_img_url(u)
+            if u2:
+                out.append(u2)
+            continue
+
+        # objeto con fields comunes
+        for attr in ("image", "foto", "archivo", "file"):
+            try:
+                v = getattr(it, attr, None)
+            except Exception:
+                v = None
+            u3 = _normalize_img_url(v)
+            if u3:
+                out.append(u3)
+                break
+
+    # uniq preserve order
+    seen = set()
+    uniq: List[str] = []
+    for u in out:
+        if u in seen:
+            continue
+        seen.add(u)
+        uniq.append(u)
+    return uniq
+
+
 # ========================== ÍTEM ==========================
 class CotizacionItemSerializer(BaseModelSerializer):
     """
     Ítem anidado.
-    - Si se envía producto_id: toma un *snapshot* de los campos del producto
+    - Si se envía producto_id: toma un *snapshot* de campos básicos del producto
       (código/nombre/categoría/descripcion/imagen) en el ítem.
-    - Si no hay producto_id, se permiten campos snapshot manuales.
+    - Además, expone (read-only) un snapshot extendido para alimentar proformas “Equipos”
+      sin requerir re-fetch del frontend.
     """
     producto_id = serializers.IntegerField(source="producto.id", required=False, allow_null=True)
+
     # Cambiamos URLField -> CharField para aceptar rutas relativas y vacías
     producto_imagen_url = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
     total_linea = serializers.SerializerMethodField(read_only=True)
+
+    # ===== Snapshot extendido (read-only) =====
+    # (ideal) descripcion "corta"/base
+    producto_descripcion = serializers.SerializerMethodField(read_only=True)
+
+    # Textos para secciones tipo “Equipos”
+    producto_descripcion_adicional = serializers.SerializerMethodField(read_only=True)
+    producto_especificaciones = serializers.SerializerMethodField(read_only=True)
+
+    # Listas de imágenes (si existen en producto). Devuelven [] si no hay.
+    producto_imagenes = serializers.SerializerMethodField(read_only=True)
+    producto_descripcion_fotos = serializers.SerializerMethodField(read_only=True)
+    producto_especificaciones_fotos = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = CotizacionItem
         fields = [
             "id",
             "producto_id",
+
+            # snapshot básico guardado en item
             "producto_codigo",
             "producto_nombre",
             "producto_categoria",
             "producto_caracteristicas",
             "producto_imagen_url",
+
+            # snapshot extendido (read-only) - llaves fijas para el frontend de equipos
+            "producto_descripcion",
+            "producto_descripcion_adicional",
+            "producto_especificaciones",
+            "producto_imagenes",
+            "producto_descripcion_fotos",
+            "producto_especificaciones_fotos",
+
             "cantidad",
             "precio_unitario",
             "total_linea",
         ]
-        read_only_fields = ["id", "total_linea"]
+        read_only_fields = [
+            "id",
+            "total_linea",
+            "producto_descripcion",
+            "producto_descripcion_adicional",
+            "producto_especificaciones",
+            "producto_imagenes",
+            "producto_descripcion_fotos",
+            "producto_especificaciones_fotos",
+        ]
 
     # --------- Presentación ---------
     def get_total_linea(self, obj: CotizacionItem) -> str:
         cantidad = _dec(getattr(obj, "cantidad", 0), "0")
         precio = _dec(getattr(obj, "precio_unitario", 0), "0")
         return str(_q2(cantidad * precio))
+
+    # --------- Snapshot extendido (read-only) ---------
+    def _get_producto_obj(self, obj: CotizacionItem):
+        try:
+            return getattr(obj, "producto", None)
+        except Exception:
+            return None
+
+    def get_producto_descripcion(self, obj: CotizacionItem) -> str:
+        """
+        Descripción base del producto (ideal para secciones “tipo producto”).
+        - Preferimos producto.descripcion si existe.
+        - Fallback al snapshot del item (producto_caracteristicas).
+        """
+        producto = self._get_producto_obj(obj)
+        if producto:
+            for campo in ("descripcion", "caracteristicas"):
+                try:
+                    v = getattr(producto, campo, None)
+                except Exception:
+                    v = None
+                if isinstance(v, str) and v.strip():
+                    return v
+        return getattr(obj, "producto_caracteristicas", "") or ""
+
+    def get_producto_descripcion_adicional(self, obj: CotizacionItem) -> str:
+        """
+        Texto editorial para “Equipos”.
+        - Preferimos campos del producto si existen.
+        - Fallback al snapshot básico (producto_caracteristicas).
+        """
+        producto = self._get_producto_obj(obj)
+        if producto:
+            for campo in ("descripcion_adicional", "descripcion_adicional_equipo", "descripcion_adicional_texto"):
+                try:
+                    v = getattr(producto, campo, None)
+                except Exception:
+                    v = None
+                if isinstance(v, str) and v.strip():
+                    return v
+
+        # fallback a item snapshot
+        v2 = getattr(obj, "producto_caracteristicas", "") or ""
+        return v2
+
+    def get_producto_especificaciones(self, obj: CotizacionItem) -> str:
+        """
+        Especificaciones técnicas para “Equipos”.
+        """
+        producto = self._get_producto_obj(obj)
+        if producto:
+            for campo in ("especificaciones", "especificaciones_tecnicas", "ficha_tecnica"):
+                try:
+                    v = getattr(producto, campo, None)
+                except Exception:
+                    v = None
+                if isinstance(v, str) and v.strip():
+                    return v
+        return ""
+
+    def get_producto_imagenes(self, obj: CotizacionItem) -> List[str]:
+        """
+        Galería general del producto.
+        - Intenta: producto.imagenes, producto.galeria, producto.fotos
+        - Si no existe, usa al menos producto.foto o el snapshot producto_imagen_url.
+        """
+        producto = self._get_producto_obj(obj)
+        urls: List[str] = []
+        if producto:
+            for campo in ("imagenes", "galeria", "fotos"):
+                try:
+                    v = getattr(producto, campo, None)
+                except Exception:
+                    v = None
+                if v:
+                    urls = _extract_urls(v)
+                    if urls:
+                        break
+
+            # fallback a foto principal del producto
+            if not urls:
+                try:
+                    foto = getattr(producto, "foto", None)
+                except Exception:
+                    foto = None
+                u = _normalize_img_url(foto)
+                if u:
+                    urls = [u]
+
+        # fallback final al snapshot del item
+        if not urls:
+            u2 = _normalize_img_url(getattr(obj, "producto_imagen_url", None))
+            if u2:
+                urls = [u2]
+        return urls
+
+    def get_producto_descripcion_fotos(self, obj: CotizacionItem) -> List[str]:
+        """
+        Fotos asociadas a descripción adicional.
+        - Intenta: producto.descripcion_fotos, producto.fotos_descripcion_adicional
+        """
+        producto = self._get_producto_obj(obj)
+        if not producto:
+            return []
+        for campo in ("descripcion_fotos", "fotos_descripcion_adicional"):
+            try:
+                v = getattr(producto, campo, None)
+            except Exception:
+                v = None
+            if v:
+                urls = _extract_urls(v)
+                if urls:
+                    return urls
+        return []
+
+    def get_producto_especificaciones_fotos(self, obj: CotizacionItem) -> List[str]:
+        """
+        Fotos asociadas a especificaciones técnicas.
+        - Intenta: producto.especificaciones_fotos, producto.fotos_especificaciones_tecnicas
+        """
+        producto = self._get_producto_obj(obj)
+        if not producto:
+            return []
+        for campo in ("especificaciones_fotos", "fotos_especificaciones_tecnicas"):
+            try:
+                v = getattr(producto, campo, None)
+            except Exception:
+                v = None
+            if v:
+                urls = _extract_urls(v)
+                if urls:
+                    return urls
+        return []
 
     # --------- Validación ---------
     def validate(self, attrs):
@@ -142,7 +381,7 @@ class CotizacionItemSerializer(BaseModelSerializer):
 
         return attrs
 
-    # --------- Snapshot desde producto ---------
+    # --------- Snapshot desde producto (BÁSICO, persistido en item) ---------
     def _extract_producto_snapshot(self, producto) -> Dict[str, Any]:
         """
         Adapta a tu tabla real `productos_producto`:

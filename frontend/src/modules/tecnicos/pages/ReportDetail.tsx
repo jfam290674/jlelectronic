@@ -48,6 +48,7 @@ import {
 } from "../api/reports";
 import ReportStatusBadge from "../components/ReportStatusBadge";
 import { toast } from "react-toastify";
+import { sendReportEmail, sendReportWhatsApp } from "../api/sendReportFunctions";
 
 // ===========================
 // TIPOS LOCALES
@@ -86,6 +87,21 @@ export default function ReportDetail(): React.ReactElement {
     open: false,
     currentIndex: 0,
     photos: [],
+  });
+
+  const [emailModal, setEmailModal] = React.useState({
+    open: false,
+    loading: false,
+    recipients: "",
+    subject: "",
+    message: "",
+  });
+
+  const [whatsappModal, setWhatsappModal] = React.useState({
+    open: false,
+    loading: false,
+    phone: "",
+    message: "",
   });
 
   // ========== Cargar datos del informe ==========
@@ -190,12 +206,99 @@ export default function ReportDetail(): React.ReactElement {
 
   // ========== WhatsApp/Email (Placeholders) ==========
 
-  const handleSendWhatsApp = () => {
-    toast.info("Función de WhatsApp en desarrollo");
+  const handleSendEmail = () => {
+    setEmailModal({
+      open: true,
+      loading: false,
+      recipients: "",
+      subject: `Reporte Técnico ${report?.report_number || ""}`,
+      message: `Estimado cliente,\n\nAdjunto encontrará el reporte técnico ${report?.report_number || ""} correspondiente al servicio realizado.\n\nSaludos cordiales,\nJL Electronic S.A.S.`,
+    });
   };
 
-  const handleSendEmail = () => {
-    toast.info("Función de Email en desarrollo");
+  const handleSendWhatsApp = () => {
+    setWhatsappModal({
+      open: true,
+      loading: false,
+      phone: "",
+      message: `Reporte Técnico ${report?.report_number || ""}`,
+    });
+  };
+
+  const handleSendEmailSubmit = async () => {
+    if (!report || !emailModal.recipients.trim()) {
+      toast.error("Ingrese al menos un destinatario");
+      return;
+    }
+
+    setEmailModal((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const recipients = emailModal.recipients
+        .split(/[,;\n]/)
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+
+      const result = await sendReportEmail(report.id, {
+        recipients,
+        subject: emailModal.subject,
+        message: emailModal.message,
+        attach_technical_report: true,
+        attach_delivery_act: true,
+      });
+
+      if (result.success) {
+        toast.success(
+          `Email enviado exitosamente a ${result.sent_to.length} destinatario(s)`
+        );
+        if (result.invalid_emails.length > 0) {
+          toast.warning(
+            `Emails inválidos: ${result.invalid_emails.join(", ")}`
+          );
+        }
+        setEmailModal((prev) => ({ ...prev, open: false }));
+      } else {
+        toast.error(`Error: ${result.detail}`);
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.detail || err.message || "Error al enviar email"
+      );
+    } finally {
+      setEmailModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSendWhatsAppSubmit = async () => {
+    if (!report || !whatsappModal.phone.trim()) {
+      toast.error("Ingrese un número de teléfono");
+      return;
+    }
+
+    setWhatsappModal((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const result = await sendReportWhatsApp(report.id, {
+        phone: whatsappModal.phone,
+        message: whatsappModal.message,
+        attach_technical_report: true,
+        attach_delivery_act: false,
+      });
+
+      if (result.success) {
+        toast.success(`WhatsApp preparado para ${result.phone_formatted}`);
+        window.open(result.whatsapp_url, "_blank");
+        setWhatsappModal((prev) => ({ ...prev, open: false }));
+      } else {
+        toast.error(`Error: ${result.detail}`);
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.detail || err.message || "Error al preparar WhatsApp"
+      );
+    } finally {
+      setWhatsappModal((prev) => ({ ...prev, loading: false }));
+    }
   };
 
   // ========== Lightbox para fotos ==========
@@ -805,6 +908,202 @@ export default function ReportDetail(): React.ReactElement {
           onNext={goToNextPhoto}
           onPrev={goToPrevPhoto}
         />
+      )}
+
+      {/* ========== Modal Email ========== */}
+      {emailModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => !emailModal.loading && setEmailModal((prev) => ({ ...prev, open: false }))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Enviar por Email</h3>
+              <button
+                onClick={() => setEmailModal((prev) => ({ ...prev, open: false }))}
+                disabled={emailModal.loading}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="email-recipients" className="block text-sm font-medium text-gray-700 mb-1">
+                  Destinatarios *
+                </label>
+                <textarea
+                  id="email-recipients"
+                  value={emailModal.recipients}
+                  onChange={(e) =>
+                    setEmailModal((prev) => ({ ...prev, recipients: e.target.value }))
+                  }
+                  placeholder="email1@example.com, email2@example.com"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={emailModal.loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Separar múltiples emails con coma o nueva línea
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="email-subject" className="block text-sm font-medium text-gray-700 mb-1">
+                  Asunto
+                </label>
+                <input
+                  id="email-subject"
+                  type="text"
+                  value={emailModal.subject}
+                  onChange={(e) =>
+                    setEmailModal((prev) => ({ ...prev, subject: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={emailModal.loading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email-message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mensaje
+                </label>
+                <textarea
+                  id="email-message"
+                  value={emailModal.message}
+                  onChange={(e) =>
+                    setEmailModal((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={emailModal.loading}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setEmailModal((prev) => ({ ...prev, open: false }))}
+                disabled={emailModal.loading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendEmailSubmit}
+                disabled={emailModal.loading || !emailModal.recipients.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+              >
+                {emailModal.loading ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <EnvelopeIcon className="h-5 w-5" />
+                    Enviar Email
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== Modal WhatsApp ========== */}
+      {whatsappModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => !whatsappModal.loading && setWhatsappModal((prev) => ({ ...prev, open: false }))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Enviar por WhatsApp</h3>
+              <button
+                onClick={() => setWhatsappModal((prev) => ({ ...prev, open: false }))}
+                disabled={whatsappModal.loading}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="whatsapp-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Número de teléfono *
+                </label>
+                <input
+                  id="whatsapp-phone"
+                  type="tel"
+                  value={whatsappModal.phone}
+                  onChange={(e) =>
+                    setWhatsappModal((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  placeholder="0987654321"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  disabled={whatsappModal.loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formato: 0987654321 o +593987654321
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="whatsapp-message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mensaje
+                </label>
+                <textarea
+                  id="whatsapp-message"
+                  value={whatsappModal.message}
+                  onChange={(e) =>
+                    setWhatsappModal((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  disabled={whatsappModal.loading}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setWhatsappModal((prev) => ({ ...prev, open: false }))}
+                disabled={whatsappModal.loading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendWhatsAppSubmit}
+                disabled={whatsappModal.loading || !whatsappModal.phone.trim()}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+              >
+                {whatsappModal.loading ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Preparando...
+                  </>
+                ) : (
+                  <>
+                    <PaperAirplaneIcon className="h-5 w-5" />
+                    Abrir WhatsApp
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
